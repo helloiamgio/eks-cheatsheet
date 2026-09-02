@@ -20,11 +20,13 @@ Content is tuned to the real cluster `a-4510-eks-mil-cluster-p-01` (account `122
 | 10 | Accessi | aws-auth vs access entries, EKS access policies, RBAC boundary |
 | 11 | ECR | login, push, lifecycle policy, cross-account pull |
 | 12 | Log | control plane log types, CloudWatch Logs Insights audit queries |
-| 13 | Upgrade | support windows, AL2 → AL2023 break at 1.33, 4-phase runbook, blue/green node groups |
-| 14 | Troubleshooting | ImagePullBackOff, Pending, IRSA failures, NotReady, ALB, kubectl auth |
-| 15 | Comandi rapidi | recon commands and one-liners |
-| 16 | Glossario | every acronym in one table |
-| 17 | Schema d'insieme | the architecture diagram, with two corrections |
+| 13 | Creazione del cluster | VPC prerequisites, eksctl config file, native CLI step by step, Terraform, smoke test, teardown |
+| 14 | Lab in locale | kind, kind + EKS Distro images, EKS Anywhere docker provider, moto/LocalStack, kwok |
+| 15 | Upgrade | support windows, AL2 → AL2023 break at 1.33, deprecated API detection, operator matrix, 4-phase runbook, blue/green node groups, D-30→D+1 checklist |
+| 16 | Troubleshooting | ImagePullBackOff, Pending, IRSA failures, NotReady, ALB, kubectl auth |
+| 17 | Comandi rapidi | recon commands and one-liners |
+| 18 | Glossario | every acronym in one table |
+| 19 | Schema d'insieme | the architecture diagram, with two corrections |
 
 ## Local preview
 

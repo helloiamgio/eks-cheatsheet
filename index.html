@@ -150,7 +150,9 @@ svg{max-width:100%;height:auto;display:block}
   <a href="#accessi">Accessi al cluster</a>
   <a href="#ecr">ECR</a>
   <a href="#observ">Log e osservabilità</a>
-  <h2>operations</h2>
+  <h2>ciclo di vita</h2>
+  <a href="#creazione">Creazione del cluster</a>
+  <a href="#lab">Lab in locale</a>
   <a href="#upgrade">Upgrade runbook</a>
   <a href="#triage">Troubleshooting</a>
   <a href="#comandi">Comandi rapidi</a>
@@ -945,8 +947,365 @@ docker push 122610509347.dkr.ecr.eu-south-1.amazonaws.com/myapp:1.4.0</pre></div
 <div class="cmd"><div class="cap">eventi del cluster in ordine cronologico — il primo posto dove guardare, sempre</div><pre>kubectl get events -A --sort-by=.lastTimestamp | tail -40</pre></div>
 </section>
 
+<section id="creazione">
+<h2><span class="num">13</span> Creazione di un cluster, passo per passo</h2>
+<p class="lead">Un cluster EKS non nasce da un comando solo: prima esistono la rete e due ruoli IAM, poi il control plane, poi i nodi, poi gli add-on e l'OIDC. Qui la sequenza completa in due modi — <code>eksctl</code> con un file dichiarativo, e la CLI nativa passo per passo — con la nomenclatura del tuo ambiente.</p>
+
+<h3>Prerequisiti di rete</h3>
+<p>EKS non crea la VPC (a meno che non glielo chieda eksctl). In un ambiente bancario la rete esiste già ed è governata da altri: quello che devi verificare prima di partire è che sia adatta.</p>
+<table>
+<thead><tr><th style="width:230px">Requisito</th><th>Perché</th></tr></thead>
+<tbody>
+<tr><td>Almeno 2 subnet in AZ diverse</td><td>Il control plane crea ENI in due zone; con una sola la creazione fallisce</td></tr>
+<tr><td>Subnet abbastanza capienti</td><td>Ogni pod consuma un IP della VPC: una <code>/24</code> per i worker si satura in fretta. Meglio <code>/22</code> o più</td></tr>
+<tr><td>Uscita verso ECR e S3</td><td>NAT Gateway, oppure VPC endpoint (<code>ecr.api</code>, <code>ecr.dkr</code>, <code>s3</code> gateway, <code>ec2</code>, <code>sts</code>, <code>logs</code>, <code>elasticloadbalancing</code>) se private-only</td></tr>
+<tr><td>Tag sulle subnet</td><td><code>kubernetes.io/role/elb=1</code> sulle pubbliche, <code>kubernetes.io/role/internal-elb=1</code> sulle private, per i load balancer</td></tr>
+<tr><td>DNS hostname abilitati sulla VPC</td><td>Senza <code>enableDnsHostnames</code> i nodi non risolvono l'endpoint privato dell'API</td></tr>
+</tbody>
+</table>
+<div class="cmd"><div class="cap">verifica della VPC candidata</div><pre>aws ec2 describe-vpcs --region eu-south-1 --vpc-ids vpc-0abc123 \
+  --query 'Vpcs[].{cidr:CidrBlock,dns:EnableDnsSupport,hostnames:EnableDnsHostnames}'
+aws ec2 describe-subnets --region eu-south-1 --filters "Name=vpc-id,Values=vpc-0abc123" \
+  --query 'Subnets[].{id:SubnetId,az:AvailabilityZone,cidr:CidrBlock,free:AvailableIpAddressCount,public:MapPublicIpOnLaunch}' --output table</pre></div>
+<div class="cmd"><div class="cap">tag mancanti sulle subnet</div><pre>aws ec2 create-tags --region eu-south-1 --resources subnet-0aaa subnet-0bbb --tags Key=kubernetes.io/role/internal-elb,Value=1</pre></div>
+
+<h3>Percorso A — eksctl con file dichiarativo</h3>
+<p>È il modo più leggibile e ripetibile senza arrivare a Terraform: un solo YAML descrive cluster, node group, add-on, IRSA e logging. Sotto, eksctl genera CloudFormation.</p>
+<div class="cmd yaml"><div class="cap">cluster.yaml completo — nomenclatura e topologia coerenti con il tuo cluster di Milano</div><pre>apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: a-4510-eks-mil-cluster-p-02
+  region: eu-south-1
+  version: "1.34"
+  tags:
+    Environment: production
+    Owner: infraops
+    CostCenter: "4510"
+
+# rete gia esistente: si dichiarano le subnet, non si fa creare la VPC
+vpc:
+  id: vpc-0abc123
+  subnets:
+    private:
+      eu-south-1a: { id: subnet-0aaa }
+      eu-south-1b: { id: subnet-0bbb }
+      eu-south-1c: { id: subnet-0ccc }
+  clusterEndpoints:
+    publicAccess: false
+    privateAccess: true
+
+# log del control plane attivi da subito: dopo costa fatica ricostruire lo storico
+cloudWatch:
+  clusterLogging:
+    enableTypes: ["audit", "authenticator", "api", "controllerManager", "scheduler"]
+    logRetentionInDays: 90
+
+iam:
+  withOIDC: true          # crea e registra l'OIDC provider: prerequisito di IRSA
+  serviceAccounts:
+    - metadata:
+        name: ebs-csi-controller-sa
+        namespace: kube-system
+      wellKnownPolicies:
+        ebsCSIController: true
+    - metadata:
+        name: aws-load-balancer-controller
+        namespace: kube-system
+      wellKnownPolicies:
+        awsLoadBalancerController: true
+
+managedNodeGroups:
+  - name: a-4510-eks-mil-mainworkers-p-02
+    instanceType: m6i.xlarge
+    amiFamily: AmazonLinux2023
+    minSize: 3
+    maxSize: 6
+    desiredCapacity: 3
+    volumeSize: 100
+    volumeType: gp3
+    volumeEncrypted: true
+    privateNetworking: true
+    labels: { workload: general }
+    updateConfig:
+      maxUnavailable: 1
+    iam:
+      withAddonPolicies:
+        ebs: true
+        cloudWatch: true
+
+  - name: a-4510-eks-mil-dbworkers-p-02
+    instanceType: r6i.xlarge
+    amiFamily: AmazonLinux2023
+    minSize: 3
+    maxSize: 3
+    desiredCapacity: 3
+    volumeSize: 200
+    volumeType: gp3
+    privateNetworking: true
+    labels: { workload: database, tier: data }
+    taints:
+      - key: workload
+        value: database
+        effect: NoSchedule
+
+  - name: a-4510-eks-mil-apigwworkers-p-02
+    instanceType: m6i.large
+    amiFamily: AmazonLinux2023
+    minSize: 2
+    maxSize: 4
+    desiredCapacity: 2
+    privateNetworking: true
+    labels: { workload: apigw }
+
+addons:
+  - name: vpc-cni
+    configurationValues: '{"env":{"ENABLE_PREFIX_DELEGATION":"true"}}'
+  - name: kube-proxy
+  - name: coredns
+    configurationValues: '{"replicaCount":3}'
+  - name: aws-ebs-csi-driver
+    useDefaultPodIdentityAssociations: false</pre></div>
+<div class="cmd"><div class="cap">dry run: mostra cosa farebbe, senza creare nulla</div><pre>eksctl create cluster -f cluster.yaml --dry-run</pre></div>
+<div class="cmd"><div class="cap">creazione (15–25 minuti; l'output resta agganciato agli stack CloudFormation)</div><pre>eksctl create cluster -f cluster.yaml</pre></div>
+<div class="cmd"><div class="cap">se qualcosa va storto, l'errore vero sta negli eventi CloudFormation</div><pre>eksctl utils describe-stacks --cluster a-4510-eks-mil-cluster-p-02 --region eu-south-1</pre></div>
+
+<h3>Percorso B — CLI nativa, un pezzo alla volta</h3>
+<p>Più verboso, ma è quello che ti serve capire quando il cluster lo crea qualcun altro (Terraform, pipeline, il team cloud) e devi verificarne i pezzi.</p>
+
+<h4>1 · Ruolo del cluster</h4>
+<div class="cmd"><div class="cap">trust policy e creazione</div><pre>cat &gt; cluster-trust.json &lt;&lt;'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": { "Service": "eks.amazonaws.com" },
+    "Action": "sts:AssumeRole"
+  }]
+}
+EOF
+
+aws iam create-role --role-name a-4510-iam-mil-clusterrole-p-02 \
+  --assume-role-policy-document file://cluster-trust.json
+
+aws iam attach-role-policy --role-name a-4510-iam-mil-clusterrole-p-02 \
+  --policy-arn arn:aws:iam::aws:policy/AmazonEKSClusterPolicy</pre></div>
+
+<h4>2 · Ruolo dei nodi</h4>
+<div class="cmd"><div class="cap">trust EC2 e le tre policy minime</div><pre>cat &gt; node-trust.json &lt;&lt;'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": { "Service": "ec2.amazonaws.com" },
+    "Action": "sts:AssumeRole"
+  }]
+}
+EOF
+
+aws iam create-role --role-name a-4510-iam-mil-noderole-p-02 \
+  --assume-role-policy-document file://node-trust.json
+
+for p in AmazonEKSWorkerNodePolicy AmazonEC2ContainerRegistryPullOnly AmazonEKS_CNI_Policy; do
+  aws iam attach-role-policy --role-name a-4510-iam-mil-noderole-p-02 --policy-arn arn:aws:iam::aws:policy/$p
+done</pre></div>
+<p class="sub">Su un cluster nuovo conviene togliere <code>AmazonEKS_CNI_Policy</code> dal node role e assegnarla via IRSA al ServiceAccount <code>aws-node</code>: stesso risultato, senza dare a ogni pod la possibilità di manipolare le ENI.</p>
+
+<h4>3 · Control plane</h4>
+<div class="cmd"><div class="cap">creazione del cluster</div><pre>aws eks create-cluster --name a-4510-eks-mil-cluster-p-02 --region eu-south-1 \
+  --kubernetes-version 1.34 \
+  --role-arn arn:aws:iam::122610509347:role/a-4510-iam-mil-clusterrole-p-02 \
+  --resources-vpc-config subnetIds=subnet-0aaa,subnet-0bbb,subnet-0ccc,endpointPublicAccess=false,endpointPrivateAccess=true \
+  --access-config authenticationMode=API_AND_CONFIG_MAP,bootstrapClusterCreatorAdminPermissions=true \
+  --logging '{"clusterLogging":[{"types":["audit","authenticator","api"],"enabled":true}]}' \
+  --tags Environment=production,CostCenter=4510</pre></div>
+<div class="cmd"><div class="cap">attendere che sia ACTIVE (10–15 minuti)</div><pre>aws eks wait cluster-active --name a-4510-eks-mil-cluster-p-02 --region eu-south-1
+aws eks describe-cluster --name a-4510-eks-mil-cluster-p-02 --region eu-south-1 --query 'cluster.[status,version,platformVersion]' --output text</pre></div>
+
+<h4>4 · OIDC provider (senza, niente IRSA)</h4>
+<div class="cmd"><div class="cap">registrazione in IAM</div><pre>eksctl utils associate-iam-oidc-provider --cluster a-4510-eks-mil-cluster-p-02 --region eu-south-1 --approve
+aws iam list-open-id-connect-providers</pre></div>
+
+<h4>5 · Node group</h4>
+<div class="cmd"><div class="cap">un gruppo, con label, taint e finestra di update</div><pre>aws eks create-nodegroup --cluster-name a-4510-eks-mil-cluster-p-02 --region eu-south-1 \
+  --nodegroup-name a-4510-eks-mil-dbworkers-p-02 \
+  --node-role arn:aws:iam::122610509347:role/a-4510-iam-mil-noderole-p-02 \
+  --subnets subnet-0aaa subnet-0bbb subnet-0ccc \
+  --instance-types r6i.xlarge --ami-type AL2023_x86_64_STANDARD --capacity-type ON_DEMAND \
+  --disk-size 200 \
+  --scaling-config minSize=3,maxSize=3,desiredSize=3 \
+  --update-config maxUnavailable=1 \
+  --labels workload=database,tier=data \
+  --taints 'key=workload,value=database,effect=NO_SCHEDULE' \
+  --tags Environment=production,CostCenter=4510</pre></div>
+<div class="cmd"><div class="cap">attesa e verifica</div><pre>aws eks wait nodegroup-active --cluster-name a-4510-eks-mil-cluster-p-02 --nodegroup-name a-4510-eks-mil-dbworkers-p-02 --region eu-south-1</pre></div>
+
+<h4>6 · Add-on</h4>
+<div class="cmd"><div class="cap">i quattro di base, nell'ordine giusto</div><pre>aws eks create-addon --cluster-name a-4510-eks-mil-cluster-p-02 --region eu-south-1 --addon-name vpc-cni
+aws eks create-addon --cluster-name a-4510-eks-mil-cluster-p-02 --region eu-south-1 --addon-name kube-proxy
+aws eks create-addon --cluster-name a-4510-eks-mil-cluster-p-02 --region eu-south-1 --addon-name coredns
+aws eks create-addon --cluster-name a-4510-eks-mil-cluster-p-02 --region eu-south-1 --addon-name aws-ebs-csi-driver \
+  --service-account-role-arn arn:aws:iam::122610509347:role/a-4510-eks-mil-cluster-p-02-EBSCSIController</pre></div>
+<p class="sub">CNI, kube-proxy e CoreDNS vengono installati comunque dal servizio alla creazione: crearli come add-on <em>gestiti</em> significa portarli sotto il controllo dell'API, che è ciò che rende semplice l'upgrade. Il driver EBS invece non c'è finché non lo aggiungi.</p>
+
+<h4>7 · Accesso e kubeconfig</h4>
+<div class="cmd"><div class="cap">kubeconfig e primo contatto</div><pre>aws eks update-kubeconfig --name a-4510-eks-mil-cluster-p-02 --region eu-south-1 --alias eks-mil-p02
+kubectl get nodes
+kubectl get pods -A</pre></div>
+<div class="cmd"><div class="cap">dare accesso al resto del team, senza toccare aws-auth</div><pre>aws eks create-access-entry --cluster-name a-4510-eks-mil-cluster-p-02 --region eu-south-1 \
+  --principal-arn arn:aws:iam::122610509347:role/a-4510-infraops-admin
+
+aws eks associate-access-policy --cluster-name a-4510-eks-mil-cluster-p-02 --region eu-south-1 \
+  --principal-arn arn:aws:iam::122610509347:role/a-4510-infraops-admin \
+  --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy \
+  --access-scope type=cluster</pre></div>
+<div class="warn"><p><code>bootstrapClusterCreatorAdminPermissions=true</code> rende amministratore l'identità che ha creato il cluster — spesso un ruolo di pipeline che nessuno usa più. Prima di considerare chiuso il provisioning, crea le access entry per gli umani e per i gruppi che devono lavorarci, altrimenti l'unico accesso amministrativo resta in mano a una pipeline.</p></div>
+
+<h3>Percorso C — Terraform</h3>
+<p>Quando il cluster è parte di un'infrastruttura versionata, il modulo <code>terraform-aws-modules/eks/aws</code> copre control plane, node group, add-on e IRSA con le stesse primitive viste sopra. Il valore non è nella sintassi, è nel fatto che la ricreazione è deterministica e la review passa da una merge request.</p>
+<div class="cmd"><div class="cap">scheletro minimo, da adattare</div><pre>module "eks" {
+  source  = "terraform-aws-modules/eks/aws"
+  version = "~> 20.0"
+
+  cluster_name    = "a-4510-eks-mil-cluster-p-02"
+  cluster_version = "1.34"
+
+  vpc_id     = "vpc-0abc123"
+  subnet_ids = ["subnet-0aaa", "subnet-0bbb", "subnet-0ccc"]
+
+  cluster_endpoint_public_access  = false
+  cluster_endpoint_private_access = true
+  enable_irsa                     = true
+
+  cluster_addons = {
+    vpc-cni            = {}
+    kube-proxy         = {}
+    coredns            = {}
+    aws-ebs-csi-driver = {}
+  }
+
+  eks_managed_node_groups = {
+    mainworkers = {
+      instance_types = ["m6i.xlarge"]
+      ami_type       = "AL2023_x86_64_STANDARD"
+      min_size       = 3
+      max_size       = 6
+      desired_size   = 3
+    }
+  }
+}</pre></div>
+<div class="note"><p>Attenzione a un dettaglio ricorrente: <code>desired_size</code> gestito da Terraform e Cluster Autoscaler che modifica lo stesso valore entrano in conflitto a ogni <code>apply</code>. Si risolve con un <code>lifecycle { ignore_changes = [scaling_config[0].desired_size] }</code> o con l'equivalente del modulo.</p></div>
+
+<h3>Checklist di collaudo del cluster nuovo</h3>
+<div class="cmd"><div class="cap">tutto quello che si verifica prima di dichiararlo pronto</div><pre>kubectl get nodes -o wide
+kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded
+kubectl run net-test --rm -it --restart=Never --image=busybox -- nslookup kubernetes.default
+aws eks list-addons --cluster-name a-4510-eks-mil-cluster-p-02 --region eu-south-1 --output table
+aws eks list-access-entries --cluster-name a-4510-eks-mil-cluster-p-02 --region eu-south-1
+aws eks describe-cluster --name a-4510-eks-mil-cluster-p-02 --region eu-south-1 --query 'cluster.logging'</pre></div>
+<div class="cmd"><div class="cap">prova end-to-end dello storage: se questo PVC lega, EBS CSI e IRSA sono a posto</div><pre>kubectl apply -f - &lt;&lt;'EOF'
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: test-ebs }
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: gp3
+  resources: { requests: { storage: 1Gi } }
+EOF
+kubectl get pvc test-ebs -w</pre></div>
+
+<h3>Distruggere quello che hai creato</h3>
+<div class="cmd"><div class="cap">ordine inverso: prima i workload con load balancer, poi i nodi, poi il cluster</div><pre>kubectl delete ingress,svc --all -A          # altrimenti restano ALB e NLB orfani, che continuano a costare
+aws eks delete-nodegroup --cluster-name a-4510-eks-mil-cluster-p-02 --nodegroup-name &lt;ng&gt; --region eu-south-1
+aws eks wait nodegroup-deleted --cluster-name a-4510-eks-mil-cluster-p-02 --nodegroup-name &lt;ng&gt; --region eu-south-1
+aws eks delete-cluster --name a-4510-eks-mil-cluster-p-02 --region eu-south-1</pre></div>
+<div class="cmd"><div class="cap">con eksctl, in un colpo solo</div><pre>eksctl delete cluster -f cluster.yaml --disable-nodegroup-eviction</pre></div>
+</section>
+
+<section id="lab">
+<h2><span class="num">14</span> Lab in locale, senza account AWS</h2>
+<p class="lead">Si può esercitarsi molto senza spendere nulla, purché sia chiaro cosa si sta simulando: Kubernetes sì, l'integrazione con AWS quasi per niente. Sul Mac servono solo Docker e Homebrew.</p>
+
+<h3>Cosa è replicabile e cosa no</h3>
+<table>
+<thead><tr><th style="width:47%">In locale funziona</th><th>In locale non esiste</th></tr></thead>
+<tbody>
+<tr><td>Manifest, Helm chart, operator, CRD</td><td>Node group, ASG, AMI EKS-optimized</td></tr>
+<tr><td>RBAC, NetworkPolicy, PDB, taint e toleration</td><td>IRSA con STS reale (serve un account)</td></tr>
+<tr><td>Drain, cordon, rollout, eviction bloccate dai PDB</td><td>Add-on gestiti e loro versioning</td></tr>
+<tr><td>Analisi API deprecate: pluto e kubent sui manifest</td><td>ALB/NLB, Ingress via Load Balancer Controller</td></tr>
+<tr><td>Prove di upgrade Kubernetes minor per minor</td><td>Upgrade Insights, extended support, fatturazione</td></tr>
+<tr><td>Comportamento dei webhook durante un drain</td><td>VPC CNI con IP reali della VPC</td></tr>
+</tbody>
+</table>
+<p>Tradotto: il lab locale è perfetto per la parte che ti rompe davvero durante un upgrade — chart, CRD, webhook, PDB — e inutile per la parte AWS. Che è comunque una buona notizia, perché la parte AWS la provi sul cluster di collaudo.</p>
+
+<h3>Opzione 1 — kind, il minimo indispensabile</h3>
+<div class="cmd"><div class="cap">installazione su macOS</div><pre>brew install kind kubectl helm</pre></div>
+<div class="cmd yaml"><div class="cap">kind-eks-lab.yaml — tre worker, per avere qualcosa da drenare</div><pre>kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: eks-lab
+nodes:
+  - role: control-plane
+  - role: worker
+    labels:
+      workload: general
+  - role: worker
+    labels:
+      workload: database
+  - role: worker
+    labels:
+      workload: apigw</pre></div>
+<div class="cmd"><div class="cap">creazione, uso, distruzione</div><pre>kind create cluster --config kind-eks-lab.yaml
+kubectl get nodes -L workload
+kind delete cluster --name eks-lab</pre></div>
+<div class="cmd"><div class="cap">provare un upgrade minor: si ricrea il cluster con un'immagine di nodo diversa</div><pre>kind create cluster --name eks-lab-133 --image kindest/node:v1.33.0</pre></div>
+
+<h3>Opzione 2 — kind con i binari di EKS Distro</h3>
+<p>EKS Distro (EKS-D) è la distribuzione open source con cui AWS costruisce EKS: stessi binari di API server, scheduler, kubelet. Esistono immagini di nodo kind costruite su EKS-D, quindi puoi avere in locale un cluster con esattamente i componenti che girano su EKS.</p>
+<div class="cmd"><div class="cap">immagini disponibili su ECR pubblico (non serve account: è un registry pubblico)</div><pre>aws ecr-public describe-image-tags --repository-name eks-distro/kubernetes-sigs/kind/node --region us-east-1 --no-sign-request --query 'imageTagDetails[-15:].imageTag' --output text</pre></div>
+<div class="cmd"><div class="cap">cluster con nodo EKS-D</div><pre>kind create cluster --name eksd-lab --image public.ecr.aws/eks-distro/kubernetes-sigs/kind/node:&lt;tag&gt;
+kubectl version
+kubectl -n kube-system get pods</pre></div>
+<p class="sub">Se il comando <code>aws</code> non è installato, i tag si leggono anche dalla pagina della gallery pubblica di ECR. Su Apple Silicon verifica che esista il tag <code>arm64</code>: non tutte le release sono multi-architettura.</p>
+
+<h3>Opzione 3 — EKS Anywhere con provider Docker</h3>
+<p>È l'unica cosa che si chiama davvero "EKS" e gira sul portatile: EKS Anywhere crea un cluster locale in container, con Cilium come CNI e il ciclo di vita gestito da Cluster API, cioè con la stessa forma dichiarativa dei cluster EKS-A di produzione.</p>
+<div class="cmd"><div class="cap">installazione</div><pre>brew install aws/tap/eks-anywhere
+eksctl anywhere version</pre></div>
+<div class="cmd"><div class="cap">generazione della configurazione e creazione</div><pre>export CLUSTER_NAME=eksa-lab
+eksctl anywhere generate clusterconfig $CLUSTER_NAME --provider docker &gt; $CLUSTER_NAME.yaml
+eksctl anywhere create cluster -f $CLUSTER_NAME.yaml</pre></div>
+<div class="cmd"><div class="cap">accesso al cluster creato</div><pre>export KUBECONFIG=$PWD/$CLUSTER_NAME/$CLUSTER_NAME-eks-a-cluster.kubeconfig
+kubectl get nodes
+eksctl anywhere delete cluster -f $CLUSTER_NAME.yaml</pre></div>
+<div class="warn"><p><strong>Due limiti da conoscere prima di perderci un pomeriggio.</strong> EKS Anywhere richiede architettura x86/amd64: sui Mac con chip Apple Silicon non è supportato. E nel file generato conviene cambiare il CIDR di default <code>192.168.0.0/16</code>, che va quasi sempre in conflitto con la rete di casa o con la VPN aziendale. Su Docker Desktop può inoltre chiedere <code>deprecatedCgroupv1</code> nelle impostazioni.</p></div>
+
+<h3>Opzione 4 — emulare le API AWS, non il cluster</h3>
+<p>Per la parte che manca — IAM, ARN, policy, STS — esistono emulatori delle API AWS che girano in un container. Non ti danno un cluster EKS, ti danno un endpoint contro cui far parlare la CLI: sufficiente per prendere confidenza con ruoli, trust policy e simulazioni di permessi senza toccare un account vero.</p>
+<div class="cmd"><div class="cap">moto server: mock open source delle API AWS</div><pre>docker run --rm -p 5000:5000 motoserver/moto:latest</pre></div>
+<div class="cmd"><div class="cap">CLI puntata all'emulatore: credenziali finte, endpoint locale</div><pre>export AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=eu-south-1
+aws --endpoint-url http://localhost:5000 iam create-role --role-name lab-node-role --assume-role-policy-document file://node-trust.json
+aws --endpoint-url http://localhost:5000 iam attach-role-policy --role-name lab-node-role --policy-arn arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+aws --endpoint-url http://localhost:5000 iam list-roles --query 'Roles[].Arn'</pre></div>
+<p class="sub">Esiste anche LocalStack, più completo e con una UI: nel piano gratuito copre i servizi di base, mentre l'emulazione di EKS ed ECR sta nel piano a pagamento. Per esercitarsi su IAM e ARN il piano gratuito basta; per simulare un cluster non serve, perché per quello ci sono le opzioni 1–3.</p>
+
+<h3>Opzione 5 — nodi finti per provare drain e scheduling su larga scala</h3>
+<p>Se quello che vuoi provare è il comportamento di un upgrade su decine di nodi — PDB che bloccano, workload che non trovano posto — puoi generare nodi simulati senza consumare risorse.</p>
+<div class="cmd"><div class="cap">kwok: nodi e pod finti su un cluster kind</div><pre>brew install kwok
+kwokctl create cluster --name kwok-lab
+kwokctl scale node --name kwok-lab --replicas 20</pre></div>
+
+<h3>Il percorso di apprendimento che consiglierei</h3>
+<ol>
+<li><strong>kind</strong> per la meccanica Kubernetes pura: RBAC, PDB, drain, webhook, operator. È dove impari cosa si rompe durante un upgrade.</li>
+<li><strong>moto o LocalStack</strong> per IAM e ARN: crea ruoli, scrivi trust policy sbagliate, guarda gli errori. Costa zero e sono gli errori che vedrai in produzione.</li>
+<li><strong>Cluster di collaudo su AWS</strong> per tutto ciò che non è emulabile: IRSA vero, node group, add-on, ALB, upgrade insights. Un cluster acceso mezza giornata costa pochi euro di control plane più le istanze — l'unico costo da tenere d'occhio è il NAT Gateway, che va spento con il resto.</li>
+</ol>
+</section>
+
 <section id="upgrade">
-<h2><span class="num">13</span> Upgrade runbook</h2>
+<h2><span class="num">15</span> Upgrade runbook</h2>
 <p class="lead">Un upgrade EKS è sempre lo stesso ciclo ripetuto per un solo minor alla volta: verifiche, control plane, nodi, add-on. Non si salta una versione e non si torna indietro.</p>
 
 <div class="svgwrap">
@@ -1146,7 +1505,7 @@ kubectl get events -A --sort-by=.lastTimestamp | tail -30</pre></div>
 </section>
 
 <section id="triage">
-<h2><span class="num">14</span> Troubleshooting — dal sintomo alla causa</h2>
+<h2><span class="num">16</span> Troubleshooting — dal sintomo alla causa</h2>
 
 <h3>Pod in ImagePullBackOff</h3>
 <table>
@@ -1210,7 +1569,7 @@ sudo journalctl -u containerd -n 100 --no-pager</pre></div>
 </section>
 
 <section id="comandi">
-<h2><span class="num">15</span> Comandi rapidi</h2>
+<h2><span class="num">17</span> Comandi rapidi</h2>
 <h4>Ricognizione di un cluster che non conosci</h4>
 <div class="cmd"><div class="cap">i cinque comandi con cui apri qualsiasi cluster EKS sconosciuto</div><pre>aws eks list-clusters --region eu-south-1 --output table
 aws eks describe-cluster --name &lt;cluster&gt; --region eu-south-1 --query 'cluster.{v:version,pf:platformVersion,status:status,ep:resourcesVpcConfig.endpointPublicAccess,role:roleArn}'
@@ -1243,7 +1602,7 @@ aws eks list-insights --cluster-name &lt;cluster&gt; --region eu-south-1 --query
 </section>
 
 <section id="glossario">
-<h2><span class="num">16</span> Glossario</h2>
+<h2><span class="num">18</span> Glossario</h2>
 <table>
 <thead><tr><th style="width:190px">Sigla</th><th>Per esteso, e cosa significa in pratica</th></tr></thead>
 <tbody>
@@ -1268,7 +1627,7 @@ aws eks list-insights --cluster-name &lt;cluster&gt; --region eu-south-1 --query
 </section>
 
 <section id="architettura">
-<h2><span class="num">17</span> Schema d'insieme</h2>
+<h2><span class="num">19</span> Schema d'insieme</h2>
 <p class="lead">La mappa che hai già in mano, riletta con quello che c'è sopra. Serve come vista d'insieme: utente → ALB → pod, con IAM e IRSA a lato e il pull da ECR verso i worker.</p>
 <figure>
   <img src="architettura-eks.png" alt="Architettura completa di un laboratorio EKS con VPC, subnet pubblica e privata, ALB, node group, ECR, IAM e IRSA">
