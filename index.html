@@ -1,0 +1,1352 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EKS Cheatsheet — teoria, pratica, upgrade</title>
+<meta name="description" content="Cheatsheet operativo Amazon EKS: node group, IAM, ARN, IRSA, add-on, networking, upgrade runbook e troubleshooting.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0e13; --panel:#111823; --panel2:#161f2b; --line:#233043; --line2:#2f3f55;
+  --tx:#e4ecf6; --tx2:#9db0c6; --tx3:#6d8098;
+  --aws:#ff9f43;      /* risorsa AWS */
+  --k8s:#5fa8ff;      /* oggetto Kubernetes */
+  --iam:#b18cff;      /* identita / permessi */
+  --net:#2fc8b8;      /* rete */
+  --warn:#ff6b6b;
+  --ok:#5fd68a;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:1.2rem}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--sans);font-size:15.5px;line-height:1.62;-webkit-font-smoothing:antialiased}
+a{color:var(--k8s);text-decoration:none;border-bottom:1px solid rgba(95,168,255,.28)}
+a:hover{border-bottom-color:var(--k8s)}
+:focus-visible{outline:2px solid var(--aws);outline-offset:2px;border-radius:3px}
+
+/* ---------- shell ---------- */
+.shell{display:grid;grid-template-columns:266px minmax(0,1fr);gap:0;max-width:1560px;margin:0 auto}
+.rail{position:sticky;top:0;height:100vh;overflow-y:auto;border-right:1px solid var(--line);padding:22px 16px 60px;background:linear-gradient(180deg,#0c1219,#0a0e13)}
+.rail::-webkit-scrollbar{width:8px}.rail::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px}
+.brand{font-family:var(--mono);font-size:13px;letter-spacing:.02em;color:var(--tx2);margin-bottom:2px}
+.brand b{color:var(--aws)}
+.rail h2{font-size:11.5px;font-family:var(--mono);color:var(--tx3);font-weight:500;margin:22px 0 6px;padding-left:9px}
+.rail a{display:block;padding:4.5px 9px;border-radius:6px;color:var(--tx2);font-size:13.6px;border:0;border-left:2px solid transparent}
+.rail a:hover{background:var(--panel);color:var(--tx)}
+.rail a.on{color:var(--tx);border-left-color:var(--aws);background:var(--panel)}
+#q{width:100%;margin:14px 0 4px;background:var(--panel);border:1px solid var(--line);color:var(--tx);border-radius:8px;padding:8px 10px;font-family:var(--mono);font-size:13px}
+#q::placeholder{color:var(--tx3)}
+main{padding:34px 42px 140px;min-width:0}
+section{margin:0 0 62px;scroll-margin-top:24px}
+section.hide{display:none}
+
+/* ---------- typography ---------- */
+h1{font-size:34px;line-height:1.16;margin:0 0 6px;letter-spacing:-.02em;font-weight:600}
+h2{font-size:25px;margin:0 0 4px;letter-spacing:-.015em;font-weight:600;display:flex;align-items:baseline;gap:12px}
+h2 .num{font-family:var(--mono);font-size:14px;color:var(--tx3);font-weight:400}
+h3{font-size:17.5px;margin:30px 0 8px;font-weight:600;color:var(--tx)}
+h4{font-size:14.5px;margin:20px 0 6px;font-weight:600;color:var(--tx2);font-family:var(--mono)}
+p{margin:9px 0;max-width:76ch}
+ul,ol{max-width:76ch;padding-left:20px;margin:9px 0}
+li{margin:4px 0}
+.lead{color:var(--tx2);font-size:16.5px;max-width:72ch}
+.sub{color:var(--tx3);font-size:13.5px;max-width:76ch;margin-top:2px}
+code{font-family:var(--mono);font-size:.88em;background:#1b2635;border:1px solid var(--line);padding:1px 5px;border-radius:5px;color:#ffd7a8}
+strong{color:#fff;font-weight:600}
+hr{border:0;border-top:1px solid var(--line);margin:34px 0}
+
+/* ---------- code blocks ---------- */
+.cmd{position:relative;background:#0d141d;border:1px solid var(--line);border-left:3px solid var(--aws);border-radius:8px;margin:10px 0;overflow:hidden}
+.cmd pre{margin:0;padding:12px 44px 12px 14px;overflow-x:auto;font-family:var(--mono);font-size:13.1px;line-height:1.65;color:#d8e6f5}
+.cmd pre::-webkit-scrollbar{height:8px}.cmd pre::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px}
+.cmd .cap{font-family:var(--mono);font-size:11.5px;color:var(--tx3);padding:7px 14px 0}
+.cmd.yaml{border-left-color:var(--k8s)}
+.cmd.json{border-left-color:var(--iam)}
+.cmd.out{border-left-color:var(--line2)}
+.cmd.out pre{color:var(--tx2)}
+.cp{position:absolute;top:6px;right:6px;background:#1a2534;border:1px solid var(--line2);color:var(--tx3);border-radius:6px;font-family:var(--mono);font-size:10.5px;padding:3px 7px;cursor:pointer}
+.cp:hover{color:var(--tx);border-color:var(--aws)}
+.cp.done{color:var(--ok);border-color:var(--ok)}
+.cmt{color:#5f7a96}
+
+/* ---------- panels ---------- */
+.grid{display:grid;gap:14px;margin:14px 0}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.card h4{margin-top:0}
+.card p,.card ul{max-width:none;font-size:14.2px}
+.note{border-left:3px solid var(--net);background:#0f1c1f;border-radius:0 8px 8px 0;padding:11px 15px;margin:14px 0}
+.warn{border-left:3px solid var(--warn);background:#1f1315;border-radius:0 8px 8px 0;padding:11px 15px;margin:14px 0}
+.note p,.warn p{margin:4px 0;max-width:74ch;font-size:14.4px}
+.tag{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:20px;border:1px solid;display:inline-block;vertical-align:middle}
+.t-aws{color:var(--aws);border-color:rgba(255,159,67,.4);background:rgba(255,159,67,.08)}
+.t-k8s{color:var(--k8s);border-color:rgba(95,168,255,.4);background:rgba(95,168,255,.08)}
+.t-iam{color:var(--iam);border-color:rgba(177,140,255,.4);background:rgba(177,140,255,.08)}
+.t-net{color:var(--net);border-color:rgba(47,200,184,.4);background:rgba(47,200,184,.08)}
+
+/* ---------- tables ---------- */
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.8px}
+th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+th{background:var(--panel2);font-weight:600;font-size:12.6px;color:var(--tx2)}
+td code{font-size:12.4px}
+tr:nth-child(even) td{background:rgba(255,255,255,.012)}
+
+/* ---------- hero ---------- */
+.hero{border:1px solid var(--line);border-radius:14px;background:radial-gradient(1100px 320px at 12% -20%,rgba(255,159,67,.13),transparent 60%),var(--panel);padding:26px 28px;margin:6px 0 30px}
+.vitals{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:20px}
+.vital{background:#0e1621;padding:11px 13px}
+.vital .l{font-family:var(--mono);font-size:10.6px;color:var(--tx3);display:block}
+.vital .v{font-family:var(--mono);font-size:14px;color:var(--tx);display:block;margin-top:3px;word-break:break-word}
+.vital .v.hot{color:var(--warn)}
+.vital .v.good{color:var(--ok)}
+figure{margin:18px 0}
+figure img{width:100%;border:1px solid var(--line);border-radius:10px;background:#fff}
+figcaption{font-size:12.6px;color:var(--tx3);margin-top:7px;font-family:var(--mono)}
+svg{max-width:100%;height:auto;display:block}
+.svgwrap{background:#0d141d;border:1px solid var(--line);border-radius:10px;padding:14px;margin:16px 0}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12.4px;color:var(--tx2);font-family:var(--mono);margin:10px 0 0}
+.legend i{width:10px;height:10px;border-radius:2px;display:inline-block;margin-right:5px}
+
+/* ---------- arn decoder ---------- */
+.arnbox input{width:100%;background:#0d141d;border:1px solid var(--line);color:#ffd7a8;font-family:var(--mono);font-size:13.4px;padding:11px 12px;border-radius:8px}
+.arnout{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:12px}
+.arnout div{background:#0e1621;padding:9px 10px;min-height:58px}
+.arnout .lb{font-family:var(--mono);font-size:10.4px;color:var(--tx3);display:block}
+.arnout .vv{font-family:var(--mono);font-size:12.4px;color:var(--aws);word-break:break-all}
+.arnout .vv.empty{color:var(--tx3)}
+@media(max-width:900px){
+  .shell{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+  main{padding:22px 18px 90px}
+  .g2,.g3{grid-template-columns:1fr}
+  .arnout{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+<nav class="rail">
+  <div class="brand">EKS <b>cheatsheet</b></div>
+  <div class="sub" style="font-size:11.6px">a-4510-eks-mil-cluster-p-01</div>
+  <input id="q" type="search" placeholder="filtra sezioni…" autocomplete="off" aria-label="Filtra sezioni">
+  <h2>fondamenta</h2>
+  <a href="#modello">Chi gestisce cosa</a>
+  <a href="#arn">ARN</a>
+  <a href="#iam">IAM</a>
+  <a href="#irsa">IRSA</a>
+  <h2>data plane</h2>
+  <a href="#nodegroup">Node group</a>
+  <a href="#autoscaling">Autoscaling</a>
+  <a href="#network">Rete e VPC CNI</a>
+  <a href="#storage">Storage</a>
+  <h2>gestione</h2>
+  <a href="#addon">Add-on</a>
+  <a href="#accessi">Accessi al cluster</a>
+  <a href="#ecr">ECR</a>
+  <a href="#observ">Log e osservabilità</a>
+  <h2>operations</h2>
+  <a href="#upgrade">Upgrade runbook</a>
+  <a href="#triage">Troubleshooting</a>
+  <a href="#comandi">Comandi rapidi</a>
+  <a href="#glossario">Glossario</a>
+  <a href="#architettura">Schema d'insieme</a>
+</nav>
+<main>
+
+<h1>Amazon EKS, dalla teoria al runbook</h1>
+<p class="lead">Tutto letto attraverso il cluster che hai davvero in mano: <code>a-4510-eks-mil-cluster-p-01</code>, region <code>eu-south-1</code> (Milano), account <code>122610509347</code>. Ogni comando è incollabile così com'è.</p>
+
+<div class="hero">
+  <h3 style="margin-top:0">Il tuo cluster, in 10 numeri</h3>
+  <p class="sub">Dati letti dalla console il 2 settembre 2026. Il campo rosso è quello che ti sta costando soldi adesso.</p>
+  <div class="vitals">
+    <div class="vital"><span class="l">kubernetes</span><span class="v">1.32</span></div>
+    <div class="vital"><span class="l">platform</span><span class="v">eks.51</span></div>
+    <div class="vital"><span class="l">region</span><span class="v">eu-south-1</span></div>
+    <div class="vital"><span class="l">creato</span><span class="v">28 mag 2025</span></div>
+    <div class="vital"><span class="l">support period</span><span class="v hot">extended → 23 mar 2027</span></div>
+    <div class="vital"><span class="l">upgrade policy</span><span class="v hot">EXTENDED</span></div>
+    <div class="vital"><span class="l">node group</span><span class="v">3 · 8 nodi</span></div>
+    <div class="vital"><span class="l">add-on</span><span class="v">6 (6 aggiornabili)</span></div>
+    <div class="vital"><span class="l">cluster health</span><span class="v good">0</span></div>
+    <div class="vital"><span class="l">upgrade insights</span><span class="v hot">1 error</span></div>
+  </div>
+</div>
+
+<div class="warn">
+  <p><strong>Traduzione economica dello stato attuale.</strong> Il supporto standard di 1.32 è finito il 23 marzo 2026: da quel giorno il control plane è passato in extended support. Il control plane costa 0,10 $/ora per cluster in standard support e 0,60 $/ora in extended support — cioè circa 73 $/mese contro 438 $/mese, per lo stesso identico cluster. Il passaggio è automatico, senza approvazione, e l'unico modo per uscirne è l'upgrade. Fine dell'extended support: 23 marzo 2027, dopo di che AWS aggiorna d'ufficio.</p>
+</div>
+
+<section id="modello">
+<h2><span class="num">01</span> Chi gestisce cosa</h2>
+<p class="lead">Se tieni a mente una sola cosa di EKS, tieni questa: AWS gestisce il control plane come un servizio chiuso, tu gestisci tutto il resto — nodi, rete, identità, add-on, workload.</p>
+
+<p>Su Mirantis MKE o su OpenShift self-managed tu vedi i master, fai il backup di etcd, rinnovi i certificati kubeadm. Su EKS niente di tutto questo esiste: non hai SSH sui master, non vedi i pod di <code>kube-apiserver</code>, non fai backup di etcd. In cambio non puoi nemmeno mettere le mani su quei componenti quando qualcosa non torna: puoi solo leggere i log che AWS espone su CloudWatch e aprire un caso.</p>
+
+<div class="svgwrap">
+<svg viewBox="0 0 900 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Divisione di responsabilità tra control plane gestito da AWS e data plane gestito dal cliente">
+  <defs>
+    <style>
+      .lbl{font:500 13px "IBM Plex Sans",sans-serif;fill:#e4ecf6}
+      .sm{font:400 11px "IBM Plex Mono",monospace;fill:#9db0c6}
+      .ttl{font:600 14px "IBM Plex Sans",sans-serif}
+      .xs{font:400 10px "IBM Plex Mono",monospace;fill:#6d8098}
+    </style>
+  </defs>
+  <rect x="14" y="14" width="420" height="300" rx="12" fill="#151016" stroke="#ff9f43" stroke-width="1.2"/>
+  <text x="34" y="42" class="ttl" fill="#ff9f43">Control plane — gestito da AWS</text>
+  <text x="34" y="60" class="xs">tu paghi 0,10 $/h (0,60 in extended). Non ci entri.</text>
+  <g>
+    <rect x="34" y="76" width="182" height="46" rx="8" fill="#1d1a17" stroke="#3a3128"/><text x="48" y="98" class="lbl">kube-apiserver</text><text x="48" y="113" class="xs">endpoint HTTPS, autenticazione</text>
+    <rect x="232" y="76" width="182" height="46" rx="8" fill="#1d1a17" stroke="#3a3128"/><text x="246" y="98" class="lbl">etcd</text><text x="246" y="113" class="xs">backup e restore fatti da AWS</text>
+    <rect x="34" y="132" width="182" height="46" rx="8" fill="#1d1a17" stroke="#3a3128"/><text x="48" y="154" class="lbl">scheduler</text><text x="48" y="169" class="xs">nessuna config custom</text>
+    <rect x="232" y="132" width="182" height="46" rx="8" fill="#1d1a17" stroke="#3a3128"/><text x="246" y="154" class="lbl">controller-manager</text><text x="246" y="169" class="xs">+ cloud-controller-manager</text>
+    <rect x="34" y="188" width="380" height="46" rx="8" fill="#1d1a17" stroke="#3a3128"/><text x="48" y="210" class="lbl">OIDC provider del cluster</text><text x="48" y="225" class="xs">oidc.eks.eu-south-1.amazonaws.com/id/A07A06…</text>
+    <rect x="34" y="244" width="380" height="52" rx="8" fill="#1d1a17" stroke="#3a3128"/><text x="48" y="264" class="lbl">upgrade del control plane</text><text x="48" y="280" class="xs">lo lanci tu, lo esegue AWS, non è reversibile</text>
+  </g>
+
+  <rect x="466" y="14" width="420" height="300" rx="12" fill="#0f1720" stroke="#5fa8ff" stroke-width="1.2"/>
+  <text x="486" y="42" class="ttl" fill="#5fa8ff">Data plane e contorno — gestito da te</text>
+  <text x="486" y="60" class="xs">EC2, add-on, IAM, rete, workload: responsabilità tua</text>
+  <g>
+    <rect x="486" y="76" width="182" height="46" rx="8" fill="#14202c" stroke="#22364a"/><text x="500" y="98" class="lbl">node group</text><text x="500" y="113" class="xs">AMI, scaling, drain, patch OS</text>
+    <rect x="684" y="76" width="182" height="46" rx="8" fill="#14202c" stroke="#22364a"/><text x="698" y="98" class="lbl">add-on</text><text x="698" y="113" class="xs">CNI, kube-proxy, CoreDNS, CSI</text>
+    <rect x="486" y="132" width="182" height="46" rx="8" fill="#14202c" stroke="#22364a"/><text x="500" y="154" class="lbl">IAM role e policy</text><text x="500" y="169" class="xs">cluster role, node role, IRSA</text>
+    <rect x="684" y="132" width="182" height="46" rx="8" fill="#14202c" stroke="#22364a"/><text x="698" y="154" class="lbl">VPC, subnet, SG</text><text x="698" y="169" class="xs">IP, NAT, endpoint, route</text>
+    <rect x="486" y="188" width="182" height="46" rx="8" fill="#14202c" stroke="#22364a"/><text x="500" y="210" class="lbl">RBAC e access entry</text><text x="500" y="225" class="xs">chi entra e con che diritti</text>
+    <rect x="684" y="188" width="182" height="46" rx="8" fill="#14202c" stroke="#22364a"/><text x="698" y="210" class="lbl">workload</text><text x="698" y="225" class="xs">PDB, probe, limiti, ingress</text>
+    <rect x="486" y="244" width="380" height="52" rx="8" fill="#14202c" stroke="#22364a"/><text x="500" y="264" class="lbl">upgrade di nodi e add-on</text><text x="500" y="280" class="xs">dopo il control plane, e nell'ordine giusto</text>
+  </g>
+</svg>
+</div>
+
+<h3>Le cinque parole che ti servono, in una riga ciascuna</h3>
+<table>
+<thead><tr><th style="width:110px">Termine</th><th>Che cos'è, detto senza giri</th><th style="width:34%">Nel tuo cluster</th></tr></thead>
+<tbody>
+<tr><td><span class="tag t-aws">ARN</span></td><td>L'indirizzo completo e univoco di una risorsa AWS. Ovunque AWS ti chieda "quale risorsa", risponde un ARN.</td><td><code>arn:aws:eks:eu-south-1:122610509347:cluster/a-4510-eks-mil-cluster-p-01</code></td></tr>
+<tr><td><span class="tag t-iam">IAM</span></td><td>Il sistema di identità e permessi di AWS. Vive fuori da Kubernetes e decide chi può parlare con le API AWS.</td><td>Il ruolo del cluster: <code>a-4510-iam-mil-clusterrole-p-01</code></td></tr>
+<tr><td><span class="tag t-aws">Node group</span></td><td>Un gruppo di EC2 identiche che fanno da worker, creato e mantenuto da EKS tramite un Auto Scaling Group.</td><td>3 gruppi: apigwworkers (2), dbworkers (3), mainworkers (3)</td></tr>
+<tr><td><span class="tag t-iam">IRSA</span></td><td>Il meccanismo che dà a un <em>pod</em> — non al nodo — credenziali AWS temporanee tramite il suo ServiceAccount.</td><td>Il controller EBS CSI usa il ruolo <code>…-EBSCSIController</code></td></tr>
+<tr><td><span class="tag t-k8s">Add-on</span></td><td>Un componente di sistema del cluster (CNI, DNS, CSI…) installato e versionato da EKS invece che da te a mano.</td><td>6 add-on, tutti con una versione più recente disponibile</td></tr>
+</tbody>
+</table>
+
+<div class="note">
+<p><strong>Il confine mentale che vale per tutto il resto della pagina.</strong> IAM risponde alla domanda "questa identità può chiamare questa API AWS?". RBAC di Kubernetes risponde a "questa identità può fare questa azione sugli oggetti del cluster?". Sono due sistemi separati che si toccano in due soli punti: l'autenticazione al cluster (access entry / aws-auth) e IRSA. Quasi tutti i problemi di permessi su EKS nascono dal confondere i due piani.</p>
+</div>
+</section>
+
+<section id="arn">
+<h2><span class="num">02</span> ARN — l'indirizzo di ogni cosa</h2>
+<p class="lead">ARN sta per Amazon Resource Name. È una stringa a sei campi separati da <code>:</code> che identifica in modo univoco una risorsa in tutto AWS. Non è un identificativo interno: è il modo in cui scrivi "questa risorsa qui" dentro policy, trust, comandi e configurazioni.</p>
+
+<div class="svgwrap">
+<svg viewBox="0 0 900 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Anatomia di un ARN a sei campi">
+  <defs><style>
+    .m{font:500 13px "IBM Plex Mono",monospace}
+    .lb{font:400 10.5px "IBM Plex Mono",monospace;fill:#6d8098}
+    .de{font:400 11px "IBM Plex Sans",sans-serif;fill:#9db0c6}
+  </style></defs>
+  <text x="20" y="34" class="m" fill="#6d8098">arn:aws:eks:eu-south-1:122610509347:cluster/a-4510-eks-mil-cluster-p-01</text>
+
+  <g>
+    <rect x="20" y="52" width="52" height="26" rx="5" fill="#1d1a17" stroke="#ff9f43"/><text x="30" y="70" class="m" fill="#ff9f43">arn</text>
+    <text x="20" y="96" class="lb">prefisso</text><text x="20" y="110" class="de">sempre così</text>
+
+    <rect x="82" y="52" width="52" height="26" rx="5" fill="#1d1a17" stroke="#ff9f43"/><text x="92" y="70" class="m" fill="#ff9f43">aws</text>
+    <text x="82" y="96" class="lb">partizione</text><text x="82" y="110" class="de">aws-cn, aws-us-gov</text>
+
+    <rect x="144" y="52" width="52" height="26" rx="5" fill="#1d1a17" stroke="#ff9f43"/><text x="154" y="70" class="m" fill="#ff9f43">eks</text>
+    <text x="144" y="96" class="lb">servizio</text><text x="144" y="110" class="de">iam, ecr, ec2, s3…</text>
+
+    <rect x="206" y="52" width="112" height="26" rx="5" fill="#1d1a17" stroke="#2fc8b8"/><text x="216" y="70" class="m" fill="#2fc8b8">eu-south-1</text>
+    <text x="206" y="96" class="lb">regione</text><text x="206" y="110" class="de">vuota se il servizio è globale</text>
+
+    <rect x="328" y="52" width="132" height="26" rx="5" fill="#1d1a17" stroke="#b18cff"/><text x="338" y="70" class="m" fill="#b18cff">122610509347</text>
+    <text x="328" y="96" class="lb">account id</text><text x="328" y="110" class="de">il tuo account, 12 cifre</text>
+
+    <rect x="470" y="52" width="410" height="26" rx="5" fill="#1d1a17" stroke="#5fa8ff"/><text x="480" y="70" class="m" fill="#5fa8ff">cluster/a-4510-eks-mil-cluster-p-01</text>
+    <text x="470" y="96" class="lb">tipo/nome della risorsa</text><text x="470" y="110" class="de">il separatore può essere / oppure : a seconda del servizio</text>
+  </g>
+  <line x1="20" y1="136" x2="880" y2="136" stroke="#233043"/>
+  <text x="20" y="158" class="de" fill="#9db0c6">IAM è un servizio globale: nei suoi ARN il campo regione è vuoto, e infatti vedi due due-punti di fila —</text>
+  <text x="20" y="176" class="m" fill="#b18cff">arn:aws:iam::122610509347:role/a-4510-iam-mil-clusterrole-p-01</text>
+</svg>
+</div>
+
+<h3>Decoder</h3>
+<p>Incolla un ARN qualsiasi e vedi come si scompone. Utile quando ne trovi uno in un errore e non capisci a cosa punta.</p>
+<div class="arnbox">
+  <input id="arnin" type="text" spellcheck="false" value="arn:aws:iam::122610509347:role/a-4510-eks-mil-cluster-p-01-EBSCSIController" aria-label="ARN da analizzare">
+  <div class="arnout" id="arnout"></div>
+</div>
+
+<h3>Gli ARN che incontri su EKS</h3>
+<table>
+<thead><tr><th style="width:26%">Risorsa</th><th>Forma</th></tr></thead>
+<tbody>
+<tr><td>Cluster EKS</td><td><code>arn:aws:eks:eu-south-1:122610509347:cluster/a-4510-eks-mil-cluster-p-01</code></td></tr>
+<tr><td>Node group</td><td><code>arn:aws:eks:eu-south-1:122610509347:nodegroup/a-4510-eks-mil-cluster-p-01/a-4510-eks-mil-mainworkers-p-01/&lt;uuid&gt;</code></td></tr>
+<tr><td>Ruolo IAM</td><td><code>arn:aws:iam::122610509347:role/a-4510-iam-mil-clusterrole-p-01</code></td></tr>
+<tr><td>Policy gestita da AWS</td><td><code>arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy</code> — l'account è la parola <code>aws</code></td></tr>
+<tr><td>Policy tua</td><td><code>arn:aws:iam::122610509347:policy/mia-policy-s3</code></td></tr>
+<tr><td>OIDC provider</td><td><code>arn:aws:iam::122610509347:oidc-provider/oidc.eks.eu-south-1.amazonaws.com/id/A07A065561AB58A4762449B95E2DC121</code></td></tr>
+<tr><td>Repository ECR</td><td><code>arn:aws:ecr:eu-south-1:122610509347:repository/myapp</code></td></tr>
+<tr><td>Security group</td><td><code>arn:aws:ec2:eu-south-1:122610509347:security-group/sg-0abc123</code></td></tr>
+<tr><td>Secret di Secrets Manager</td><td><code>arn:aws:secretsmanager:eu-south-1:122610509347:secret:prod/db-AbCdEf</code> — con suffisso random</td></tr>
+<tr><td>Identità assunta via IRSA</td><td><code>arn:aws:sts::122610509347:assumed-role/&lt;ruolo&gt;/&lt;session-name&gt;</code> — questa vedi nei log CloudTrail</td></tr>
+</tbody>
+</table>
+
+<div class="note"><p><strong>Il wildcard <code>*</code> è ammesso nelle policy</strong>, e lì nasce metà dei problemi di sicurezza: <code>arn:aws:s3:::mio-bucket/*</code> significa "tutti gli oggetti del bucket", mentre <code>"Resource": "*"</code> significa "qualunque risorsa dell'account". Il secondo in una policy di nodo è quello che fa scattare le review di sicurezza.</p></div>
+
+<h4>Recuperare gli ARN veri dalla CLI</h4>
+<div class="cmd"><div class="cap">chi sono io, adesso</div><pre>aws sts get-caller-identity</pre></div>
+<div class="cmd"><div class="cap">ARN del cluster e del suo ruolo</div><pre>aws eks describe-cluster --name a-4510-eks-mil-cluster-p-01 --region eu-south-1 \
+  --query 'cluster.{arn:arn,role:roleArn,oidc:identity.oidc.issuer,version:version,platform:platformVersion}' --output table</pre></div>
+<div class="cmd"><div class="cap">ARN di tutti i ruoli che contengono 4510</div><pre>aws iam list-roles --query 'Roles[?contains(RoleName,`4510`)].[RoleName,Arn]' --output table</pre></div>
+</section>
+
+<section id="iam">
+<h2><span class="num">03</span> IAM — identità e permessi</h2>
+<p class="lead">IAM è il portiere di AWS. Ogni chiamata alle API AWS — creare un volume EBS, scaricare un'immagine da ECR, leggere un secret — viene valutata da IAM prima di essere eseguita. Kubernetes qui non c'entra ancora nulla.</p>
+
+<h3>I quattro oggetti, e a cosa servono davvero</h3>
+<div class="grid g2">
+  <div class="card"><h4 style="color:var(--iam)">Policy</h4><p>Un documento JSON che elenca azioni permesse o negate su certe risorse. Da sola non fa nulla: è un pezzo di carta finché non la attacchi a qualcuno.</p></div>
+  <div class="card"><h4 style="color:var(--iam)">Role</h4><p>Un'identità <em>senza password</em> che qualcuno può assumere temporaneamente. È il mattone di EKS: lo assumono le EC2 dei nodi, il control plane, e i pod via IRSA.</p></div>
+  <div class="card"><h4 style="color:var(--iam)">User</h4><p>Un'identità con credenziali di lunga durata (password o access key). Nel data plane non dovrebbe comparire mai: le access key statiche nei pod sono l'anti-pattern numero uno.</p></div>
+  <div class="card"><h4 style="color:var(--iam)">Group</h4><p>Solo un contenitore di user per attaccare policy in blocco. Non ha nulla a che vedere con i gruppi RBAC di Kubernetes, malgrado il nome.</p></div>
+</div>
+
+<h3>Il pezzo che confonde tutti: le due policy di un role</h3>
+<p>Ogni ruolo IAM ha <strong>due</strong> documenti, e fanno cose diverse. Se non funziona qualcosa, il 90% delle volte è il primo, non il secondo.</p>
+<table>
+<thead><tr><th style="width:190px">Documento</th><th>Risponde alla domanda</th><th style="width:26%">Dove lo trovi</th></tr></thead>
+<tbody>
+<tr><td><strong>Trust policy</strong><br><span class="sub">assume role policy</span></td><td><em>Chi</em> può indossare questo ruolo. Un servizio EC2? Un altro account? Un ServiceAccount Kubernetes?</td><td>Console → ruolo → scheda "Trust relationships"</td></tr>
+<tr><td><strong>Permission policy</strong><br><span class="sub">una o più, allegate</span></td><td><em>Cosa</em> può fare chi lo indossa: quali azioni su quali ARN.</td><td>Console → ruolo → scheda "Permissions"</td></tr>
+</tbody>
+</table>
+
+<div class="cmd json"><div class="cap">trust policy — "possono indossarmi le istanze EC2" (è quella del node role)</div><pre>{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": { "Service": "ec2.amazonaws.com" },
+    "Action": "sts:AssumeRole"
+  }]
+}</pre></div>
+
+<div class="cmd json"><div class="cap">permission policy — "posso leggere solo questo bucket"</div><pre>{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": ["s3:GetObject", "s3:ListBucket"],
+    "Resource": [
+      "arn:aws:s3:::a-4510-report-prod",
+      "arn:aws:s3:::a-4510-report-prod/*"
+    ]
+  }]
+}</pre></div>
+
+<h3>I ruoli che un cluster EKS ha per forza</h3>
+<table>
+<thead><tr><th style="width:150px">Ruolo</th><th>Chi lo assume</th><th>Policy tipiche</th></tr></thead>
+<tbody>
+<tr><td><strong>Cluster role</strong><br><span class="sub">a-4510-iam-mil-clusterrole-p-01</span></td><td>Il servizio EKS (<code>eks.amazonaws.com</code>) per conto del control plane</td><td><code>AmazonEKSClusterPolicy</code> — gli serve per creare ENI, aggiornare load balancer, leggere le subnet</td></tr>
+<tr><td><strong>Node role</strong><br><span class="sub">uno per node group</span></td><td>Le EC2 worker, tramite instance profile</td><td><code>AmazonEKSWorkerNodePolicy</code>, <code>AmazonEC2ContainerRegistryReadOnly</code> (o <code>…PullOnly</code>), <code>AmazonEKS_CNI_Policy</code></td></tr>
+<tr><td><strong>Ruoli IRSA</strong><br><span class="sub">uno per componente</span></td><td>I singoli pod tramite ServiceAccount</td><td>Solo i permessi di quel componente: EBS CSI, Load Balancer Controller, external-secrets…</td></tr>
+</tbody>
+</table>
+
+<div class="warn"><p><strong>Perché <code>AmazonEKS_CNI_Policy</code> sul node role è discutibile.</strong> Quella policy permette di manipolare le ENI dell'istanza: se sta sul ruolo del nodo, <em>ogni pod</em> che riesce a raggiungere il metadata endpoint eredita quel potere. La pratica corretta è spostarla su un ruolo IRSA dedicato al ServiceAccount <code>aws-node</code>, e bloccare l'accesso a IMDS dai pod (hop limit a 1).</p></div>
+
+<div class="cmd"><div class="cap">chiudere IMDSv2 ai pod su un'istanza — impedisce di rubare le credenziali del nodo</div><pre>aws ec2 modify-instance-metadata-options --instance-id i-0abc123 \
+  --http-tokens required --http-put-response-hop-limit 1 --region eu-south-1</pre></div>
+
+<h4>Ispezione rapida di un ruolo</h4>
+<div class="cmd"><div class="cap">trust policy + policy allegate di un ruolo</div><pre>aws iam get-role --role-name a-4510-iam-mil-clusterrole-p-01 --query 'Role.AssumeRolePolicyDocument'</pre></div>
+<div class="cmd"><div class="cap">policy gestite e inline</div><pre>aws iam list-attached-role-policies --role-name a-4510-iam-mil-clusterrole-p-01 --output table
+aws iam list-role-policies --role-name a-4510-iam-mil-clusterrole-p-01</pre></div>
+<div class="cmd"><div class="cap">simulare un permesso prima di scoprirlo in produzione</div><pre>aws iam simulate-principal-policy \
+  --policy-source-arn arn:aws:iam::122610509347:role/a-4510-eks-mil-cluster-p-01-EBSCSIController \
+  --action-names ec2:CreateVolume ec2:AttachVolume \
+  --query 'EvaluationResults[].{action:EvalActionName,decision:EvalDecision}' --output table</pre></div>
+</section>
+
+<section id="irsa">
+<h2><span class="num">04</span> IRSA — dare credenziali AWS a un pod</h2>
+<p class="lead">IAM Roles for Service Accounts risolve un problema preciso: un pod deve chiamare un'API AWS (creare un volume, leggere un secret) senza che tu gli metta dentro una access key, e senza dare quel permesso a tutti i pod del nodo.</p>
+
+<h3>Il problema che risolve</h3>
+<p>Senza IRSA hai due sole strade, entrambe brutte. La prima: metti una access key statica in un Secret Kubernetes — credenziali eterne, che ruotano solo se ci pensi tu, leggibili da chiunque abbia <code>get secret</code>. La seconda: attacchi il permesso al <em>node role</em> — e allora tutti i pod di quel nodo, compreso quello scritto male del fornitore, possono fare la stessa cosa.</p>
+<p>IRSA introduce un terzo modo: il cluster ha un suo OIDC provider, il pod riceve un token firmato che dice "sono il ServiceAccount X nel namespace Y", e AWS scambia quel token con credenziali temporanee del ruolo che si fida esattamente di quel ServiceAccount.</p>
+
+<div class="svgwrap">
+<svg viewBox="0 0 900 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flusso IRSA in cinque passi dal pod alle credenziali temporanee">
+<defs>
+  <marker id="ar" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#b18cff"/></marker>
+  <style>
+    .b{font:500 12.5px "IBM Plex Sans",sans-serif;fill:#e4ecf6}
+    .x{font:400 10.5px "IBM Plex Mono",monospace;fill:#8fa2b8}
+    .n{font:600 11px "IBM Plex Mono",monospace;fill:#0a0e13}
+    .st{font:400 11.5px "IBM Plex Sans",sans-serif;fill:#b18cff}
+  </style>
+</defs>
+
+<rect x="18" y="30" width="230" height="112" rx="10" fill="#0f1720" stroke="#5fa8ff"/>
+<text x="36" y="56" class="b" fill="#5fa8ff">Pod  ebs-csi-controller</text>
+<text x="36" y="76" class="x">serviceAccountName: ebs-csi-controller-sa</text>
+<text x="36" y="94" class="x">namespace: kube-system</text>
+<text x="36" y="118" class="x">token proiettato in:</text>
+<text x="36" y="132" class="x">/var/run/secrets/eks.amazonaws.com/…/token</text>
+
+<rect x="18" y="176" width="230" height="96" rx="10" fill="#0f1720" stroke="#22364a"/>
+<text x="36" y="200" class="b">ServiceAccount</text>
+<text x="36" y="220" class="x">annotations:</text>
+<text x="36" y="236" class="x">eks.amazonaws.com/role-arn:</text>
+<text x="36" y="252" class="x" fill="#b18cff">arn:aws:iam::1226…:role/…EBSCSIController</text>
+
+<rect x="330" y="30" width="240" height="112" rx="10" fill="#1a1424" stroke="#b18cff"/>
+<text x="350" y="56" class="b" fill="#b18cff">AWS STS</text>
+<text x="350" y="78" class="x">AssumeRoleWithWebIdentity</text>
+<text x="350" y="96" class="x">verifica firma del token contro</text>
+<text x="350" y="112" class="x">l'OIDC provider registrato in IAM</text>
+
+<rect x="330" y="176" width="240" height="112" rx="10" fill="#151016" stroke="#ff9f43"/>
+<text x="350" y="200" class="b" fill="#ff9f43">OIDC provider del cluster</text>
+<text x="350" y="222" class="x">oidc.eks.eu-south-1.amazonaws.com</text>
+<text x="350" y="238" class="x">/id/A07A065561AB58A47624…</text>
+<text x="350" y="262" class="x">espone le chiavi pubbliche (JWKS)</text>
+
+<rect x="650" y="30" width="232" height="112" rx="10" fill="#1a1424" stroke="#b18cff"/>
+<text x="670" y="56" class="b" fill="#b18cff">IAM Role</text>
+<text x="670" y="78" class="x">trust: sub = system:serviceaccount:</text>
+<text x="670" y="94" class="x">kube-system:ebs-csi-controller-sa</text>
+<text x="670" y="112" class="x">aud = sts.amazonaws.com</text>
+
+<rect x="650" y="176" width="232" height="112" rx="10" fill="#101d1c" stroke="#2fc8b8"/>
+<text x="670" y="200" class="b" fill="#2fc8b8">Credenziali temporanee</text>
+<text x="670" y="222" class="x">AccessKeyId / SecretKey / Token</text>
+<text x="670" y="240" class="x">durata 1h, rinnovate dall'SDK</text>
+<text x="670" y="264" class="x">→ ec2:CreateVolume, AttachVolume…</text>
+
+<path d="M248 86 L322 86" stroke="#b18cff" stroke-width="1.4" marker-end="url(#ar)"/>
+<circle cx="285" cy="72" r="9" fill="#b18cff"/><text x="281" y="76" class="n">1</text>
+<path d="M450 176 L450 148" stroke="#b18cff" stroke-width="1.4" marker-end="url(#ar)"/>
+<circle cx="468" cy="164" r="9" fill="#b18cff"/><text x="464" y="168" class="n">2</text>
+<path d="M570 86 L642 86" stroke="#b18cff" stroke-width="1.4" marker-end="url(#ar)"/>
+<circle cx="606" cy="72" r="9" fill="#b18cff"/><text x="602" y="76" class="n">3</text>
+<path d="M766 142 L766 170" stroke="#b18cff" stroke-width="1.4" marker-end="url(#ar)"/>
+<circle cx="784" cy="158" r="9" fill="#b18cff"/><text x="780" y="162" class="n">4</text>
+<path d="M650 232 L560 232 L560 320 L133 320 L133 278" stroke="#2fc8b8" stroke-width="1.4" fill="none" marker-end="url(#ar)" opacity=".8"/>
+<circle cx="360" cy="320" r="9" fill="#2fc8b8"/><text x="356" y="324" class="n">5</text>
+
+<text x="18" y="356" class="st">1. il pod presenta il token proiettato · 2. STS chiede le chiavi pubbliche all'issuer del cluster · 3. verifica sub e aud</text>
+<text x="18" y="374" class="st">4. il ruolo accetta e STS emette le credenziali · 5. l'SDK dentro il pod le usa e le rinnova da solo, senza segreti sul disco</text>
+</svg>
+</div>
+
+<h3>Le tre cose che devono combaciare</h3>
+<p>IRSA fallisce sempre per uno di questi tre disallineamenti. Quando debugghi, controllali in quest'ordine.</p>
+<ol>
+<li><strong>L'OIDC provider del cluster è registrato in IAM.</strong> Il cluster espone l'issuer comunque, ma se non esiste l'oggetto <code>oidc-provider</code> in IAM, STS non si fida di nessun token.</li>
+<li><strong>La trust policy del ruolo cita esattamente quel ServiceAccount.</strong> Namespace e nome sono case-sensitive; un typo qui dà <code>AccessDenied</code> e nient'altro.</li>
+<li><strong>Il ServiceAccount ha l'annotation con l'ARN giusto</strong> e il pod usa davvero quel ServiceAccount (non <code>default</code>).</li>
+</ol>
+
+<div class="cmd json"><div class="cap">trust policy IRSA reale — quella dietro il ruolo EBS CSI del tuo cluster</div><pre>{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {
+      "Federated": "arn:aws:iam::122610509347:oidc-provider/oidc.eks.eu-south-1.amazonaws.com/id/A07A065561AB58A4762449B95E2DC121"
+    },
+    "Action": "sts:AssumeRoleWithWebIdentity",
+    "Condition": {
+      "StringEquals": {
+        "oidc.eks.eu-south-1.amazonaws.com/id/A07A065561AB58A4762449B95E2DC121:aud": "sts.amazonaws.com",
+        "oidc.eks.eu-south-1.amazonaws.com/id/A07A065561AB58A4762449B95E2DC121:sub": "system:serviceaccount:kube-system:ebs-csi-controller-sa"
+      }
+    }
+  }]
+}</pre></div>
+
+<div class="note"><p>Usa <code>StringEquals</code> sul campo <code>sub</code>, non <code>StringLike</code> con <code>*</code>. Un <code>system:serviceaccount:*:*</code> in trust significa "qualunque pod di questo cluster può assumere il ruolo", e vanifica tutto IRSA. Se ti serve un ruolo per più SA, elencali in una lista dentro <code>StringEquals</code>.</p></div>
+
+<h4>Verificare l'OIDC provider</h4>
+<div class="cmd"><div class="cap">issuer del cluster e provider registrati in IAM: i due valori devono coincidere</div><pre>aws eks describe-cluster --name a-4510-eks-mil-cluster-p-01 --region eu-south-1 \
+  --query 'cluster.identity.oidc.issuer' --output text
+aws iam list-open-id-connect-providers</pre></div>
+<div class="cmd"><div class="cap">crearlo se manca (eksctl fa da solo il thumbprint)</div><pre>eksctl utils associate-iam-oidc-provider --cluster a-4510-eks-mil-cluster-p-01 --region eu-south-1 --approve</pre></div>
+
+<h4>Creare un ruolo IRSA in un colpo solo</h4>
+<div class="cmd"><div class="cap">eksctl crea ruolo, trust policy e annotation sul ServiceAccount</div><pre>eksctl create iamserviceaccount \
+  --cluster a-4510-eks-mil-cluster-p-01 --region eu-south-1 \
+  --namespace app-prod --name s3-reader \
+  --attach-policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess \
+  --role-name a-4510-iam-mil-s3reader-p-01 \
+  --approve</pre></div>
+
+<div class="cmd yaml"><div class="cap">a mano: l'annotation è tutto ciò che serve lato Kubernetes</div><pre>apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: s3-reader
+  namespace: app-prod
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::122610509347:role/a-4510-iam-mil-s3reader-p-01</pre></div>
+
+<h4>Provare che funziona davvero, dal pod</h4>
+<div class="cmd"><div class="cap">le variabili iniettate dal webhook devono esserci</div><pre>kubectl -n app-prod exec deploy/mia-app -- env | grep AWS_</pre></div>
+<div class="cmd out"><div class="cap">atteso</div><pre>AWS_ROLE_ARN=arn:aws:iam::122610509347:role/a-4510-iam-mil-s3reader-p-01
+AWS_WEB_IDENTITY_TOKEN_FILE=/var/run/secrets/eks.amazonaws.com/serviceaccount/token
+AWS_STS_REGIONAL_ENDPOINTS=regional</pre></div>
+<div class="cmd"><div class="cap">chi sono davvero, visto da AWS (pod usa e getta)</div><pre>kubectl -n app-prod run awscli --rm -it --restart=Never \
+  --overrides='{"spec":{"serviceAccountName":"s3-reader"}}' \
+  --image=amazon/aws-cli:latest -- sts get-caller-identity</pre></div>
+<p class="sub">Se l'ARN che torna contiene <code>assumed-role/a-4510-iam-mil-s3reader-p-01</code> IRSA funziona. Se contiene il nome del node role, l'annotation non è stata letta: il webhook inietta le variabili solo alla <em>creazione</em> del pod, quindi dopo aver annotato il SA devi far ripartire i pod.</p>
+
+<h3>IRSA o Pod Identity?</h3>
+<p>Dal 2023 esiste un secondo meccanismo, EKS Pod Identity, che fa la stessa cosa in modo più semplice: un add-on <code>eks-pod-identity-agent</code> sul cluster e un'associazione fra ServiceAccount e ruolo lato EKS, senza OIDC e senza trust policy con condizioni.</p>
+<table>
+<thead><tr><th style="width:210px"></th><th>IRSA</th><th>Pod Identity</th></tr></thead>
+<tbody>
+<tr><td>Trust policy del ruolo</td><td>Una per cluster, con condizioni su sub/aud</td><td>Una sola, uguale sempre, verso <code>pods.eks.amazonaws.com</code></td></tr>
+<tr><td>Riuso dello stesso ruolo su più cluster</td><td>Va aggiunta una condizione per ogni cluster</td><td>Immediato</td></tr>
+<tr><td>Prerequisiti</td><td>OIDC provider registrato</td><td>Add-on agent installato sui nodi</td></tr>
+<tr><td>Fargate</td><td>Sì</td><td>No</td></tr>
+<tr><td>Cosa hai tu oggi</td><td><strong>Questo</strong> — la colonna "EKS Pod Identity: Not set" degli add-on lo conferma</td><td>Non attivo</td></tr>
+</tbody>
+</table>
+<p>Non c'è fretta di migrare: convivono, e IRSA resta pienamente supportato. Ha senso valutare Pod Identity quando il numero di ruoli inizia a fare male, o quando lo stesso componente gira su molti cluster.</p>
+</section>
+
+<section id="nodegroup">
+<h2><span class="num">05</span> Node group — dove girano davvero i pod</h2>
+<p class="lead">Un managed node group è un insieme di EC2 identiche che EKS crea, registra al cluster e aggiorna per te. Sotto c'è un normale Auto Scaling Group; sopra ci sono nodi Kubernetes con label, taint e un ciclo di vita gestito.</p>
+
+<div class="svgwrap">
+<svg viewBox="0 0 900 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Anatomia di un managed node group">
+<defs><style>
+  .b{font:500 12.5px "IBM Plex Sans",sans-serif;fill:#e4ecf6}
+  .x{font:400 10.5px "IBM Plex Mono",monospace;fill:#8fa2b8}
+  .h{font:600 13px "IBM Plex Sans",sans-serif}
+</style>
+<marker id="ar2" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#ff9f43"/></marker>
+</defs>
+
+<rect x="16" y="18" width="868" height="90" rx="10" fill="#151016" stroke="#ff9f43"/>
+<text x="34" y="42" class="h" fill="#ff9f43">Managed node group — a-4510-eks-mil-mainworkers-p-01</text>
+<text x="34" y="62" class="x">quello che dichiari tu: instance type, desired/min/max, subnet, AMI type, node role, label, taint, maxUnavailable</text>
+<text x="34" y="82" class="x">AMI release version 1.32.1-20250403 · desired size 3 · launch template: nessuno (EKS ne genera uno interno)</text>
+<text x="34" y="98" class="x">EKS lo traduce in ↓</text>
+
+<rect x="16" y="126" width="280" height="76" rx="10" fill="#101821" stroke="#22364a"/>
+<text x="34" y="150" class="b">Auto Scaling Group</text>
+<text x="34" y="170" class="x">launch template + AMI EKS-optimized</text>
+<text x="34" y="188" class="x">distribuito sulle subnet che hai indicato</text>
+
+<rect x="320" y="126" width="280" height="76" rx="10" fill="#101821" stroke="#22364a"/>
+<text x="338" y="150" class="b">Istanze EC2 + instance profile</text>
+<text x="338" y="170" class="x">userdata: bootstrap verso l'endpoint del cluster</text>
+<text x="338" y="188" class="x">assumono il node role → permessi AWS del nodo</text>
+
+<rect x="624" y="126" width="260" height="76" rx="10" fill="#0f1720" stroke="#5fa8ff"/>
+<text x="642" y="150" class="b" fill="#5fa8ff">Oggetto Node in Kubernetes</text>
+<text x="642" y="170" class="x">kubelet registrato al control plane</text>
+<text x="642" y="188" class="x">label eks.amazonaws.com/nodegroup=…</text>
+
+<path d="M296 164 L314 164" stroke="#ff9f43" stroke-width="1.4" marker-end="url(#ar2)"/>
+<path d="M600 164 L618 164" stroke="#ff9f43" stroke-width="1.4" marker-end="url(#ar2)"/>
+
+<rect x="16" y="220" width="868" height="94" rx="10" fill="#0d141d" stroke="#233043"/>
+<text x="34" y="244" class="b">Label che EKS mette da solo su ogni nodo — usale nei nodeSelector, sono gratis e stabili</text>
+<text x="34" y="266" class="x" fill="#ffd7a8">eks.amazonaws.com/nodegroup = a-4510-eks-mil-mainworkers-p-01</text>
+<text x="34" y="284" class="x" fill="#ffd7a8">topology.kubernetes.io/zone = eu-south-1a   ·   node.kubernetes.io/instance-type = m6i.xlarge</text>
+<text x="34" y="302" class="x" fill="#ffd7a8">eks.amazonaws.com/capacityType = ON_DEMAND | SPOT   ·   kubernetes.io/arch = amd64 | arm64</text>
+</svg>
+</div>
+
+<h3>Le tre famiglie di compute, e quando usarle</h3>
+<table>
+<thead><tr><th style="width:150px">Tipo</th><th>Chi fa cosa</th><th>Quando ha senso</th></tr></thead>
+<tbody>
+<tr><td><strong>Managed node group</strong></td><td>EKS crea l'ASG, aggiorna l'AMI, fa cordon e drain durante l'update rispettando i PDB</td><td>Default per il 90% dei casi. È quello che hai.</td></tr>
+<tr><td><strong>Self-managed</strong></td><td>Ti crei tu ASG, AMI e bootstrap; EKS non sa nulla dell'aggiornamento</td><td>AMI custom con hardening pesante, GPU particolari, requisiti che il managed non copre</td></tr>
+<tr><td><strong>Fargate</strong></td><td>Niente nodi: ogni pod è una micro-VM. Nessun DaemonSet, nessun volume EBS</td><td>Job isolati, workload a burst. Raramente adatto a stack bancari con sidecar e agent</td></tr>
+<tr><td><strong>EKS Auto Mode</strong></td><td>AWS gestisce anche i nodi: provisioning, patch, consolidamento. Costo maggiorato sull'EC2</td><td>Cluster nuovi dove non vuoi gestire capacity. Non retrofittabile a cuor leggero</td></tr>
+</tbody>
+</table>
+
+<h3>Il tuo layout a tre gruppi</h3>
+<p>Tre node group separati con nomi <code>apigwworkers</code>, <code>dbworkers</code>, <code>mainworkers</code> è un pattern di segregazione: workload diversi su hardware diverso, blast radius separato, e soprattutto la possibilità di aggiornare un gruppo alla volta. È anche il motivo per cui su un cluster così un upgrade non è mai "un" upgrade: sono tre finestre, o tre onde della stessa finestra.</p>
+
+<div class="cmd"><div class="cap">inventario dei gruppi</div><pre>aws eks list-nodegroups --cluster-name a-4510-eks-mil-cluster-p-01 --region eu-south-1 --output table</pre></div>
+<div class="cmd"><div class="cap">dettaglio di un gruppo: versione, AMI, scaling, subnet, ruolo</div><pre>aws eks describe-nodegroup --cluster-name a-4510-eks-mil-cluster-p-01 \
+  --nodegroup-name a-4510-eks-mil-mainworkers-p-01 --region eu-south-1 \
+  --query 'nodegroup.{k8s:version,ami:releaseVersion,amiType:amiType,type:instanceTypes,cap:capacityType,scaling:scalingConfig,subnets:subnets,role:nodeRole,health:health.issues}'</pre></div>
+<div class="cmd"><div class="cap">tutti e tre in una riga ciascuno — il check che fai prima di ogni upgrade</div><pre>for ng in $(aws eks list-nodegroups --cluster-name a-4510-eks-mil-cluster-p-01 --region eu-south-1 --query 'nodegroups[]' --output text); do
+  aws eks describe-nodegroup --cluster-name a-4510-eks-mil-cluster-p-01 --nodegroup-name $ng --region eu-south-1 \
+    --query "nodegroup.[nodegroupName,version,releaseVersion,amiType,scalingConfig.desiredSize,status]" --output text
+done</pre></div>
+
+<h4>Vista dal lato Kubernetes</h4>
+<div class="cmd"><div class="cap">nodi con gruppo, zona, tipo istanza e versione kubelet</div><pre>kubectl get nodes -L eks.amazonaws.com/nodegroup,topology.kubernetes.io/zone,node.kubernetes.io/instance-type -o wide</pre></div>
+<div class="cmd"><div class="cap">quanti pod per nodo rispetto al massimo consentito</div><pre>kubectl get nodes -o custom-columns='NODE:.metadata.name,MAXPODS:.status.allocatable.pods,CPU:.status.allocatable.cpu,MEM:.status.allocatable.memory'</pre></div>
+<div class="cmd"><div class="cap">solo i nodi di un gruppo</div><pre>kubectl get nodes -l eks.amazonaws.com/nodegroup=a-4510-eks-mil-dbworkers-p-01</pre></div>
+
+<h3>Scaling e capacità</h3>
+<div class="cmd"><div class="cap">cambiare desired/min/max e la finestra di indisponibilità durante gli update</div><pre>aws eks update-nodegroup-config --cluster-name a-4510-eks-mil-cluster-p-01 \
+  --nodegroup-name a-4510-eks-mil-mainworkers-p-01 --region eu-south-1 \
+  --scaling-config minSize=3,maxSize=6,desiredSize=4 \
+  --update-config maxUnavailable=1</pre></div>
+<p class="sub"><code>maxUnavailable</code> vale sia per lo scaling sia per gli update dell'AMI: è il numero di nodi che EKS può togliere contemporaneamente. Su un gruppo da 3 nodi, <code>1</code> è l'unico valore ragionevole. Esiste anche <code>maxUnavailablePercentage</code>, più comodo sui gruppi grandi.</p>
+
+<h4>Label e taint gestiti da EKS</h4>
+<div class="cmd"><div class="cap">aggiungere una label a tutto il gruppo — persiste ai replacement dei nodi</div><pre>aws eks update-nodegroup-config --cluster-name a-4510-eks-mil-cluster-p-01 \
+  --nodegroup-name a-4510-eks-mil-dbworkers-p-01 --region eu-south-1 \
+  --labels 'addOrUpdateLabels={workload=database,tier=data}'</pre></div>
+<div class="cmd"><div class="cap">taint dedicato: solo chi lo tollera atterra su questi nodi</div><pre>aws eks update-nodegroup-config --cluster-name a-4510-eks-mil-cluster-p-01 \
+  --nodegroup-name a-4510-eks-mil-dbworkers-p-01 --region eu-south-1 \
+  --taints 'addOrUpdateTaints=[{key=workload,value=database,effect=NO_SCHEDULE}]'</pre></div>
+<div class="warn"><p>Label e taint messi con <code>kubectl label node</code> spariscono al primo replacement del nodo, che durante un upgrade succede a tutti. Se devono sopravvivere, vanno dichiarati sul node group.</p></div>
+
+<h3>Il legame con l'ASG</h3>
+<p>Il gruppo è gestito, ma sotto c'è un ASG normale che a volte devi guardare — per esempio quando i nodi non nascono e vuoi vedere l'errore vero (subnet senza IP, capacità esaurita nella AZ, quota EC2).</p>
+<div class="cmd"><div class="cap">trovare l'ASG dietro al node group e leggerne le attività recenti</div><pre>ASG=$(aws eks describe-nodegroup --cluster-name a-4510-eks-mil-cluster-p-01 \
+  --nodegroup-name a-4510-eks-mil-mainworkers-p-01 --region eu-south-1 \
+  --query 'nodegroup.resources.autoScalingGroups[0].name' --output text)
+aws autoscaling describe-scaling-activities --auto-scaling-group-name $ASG --region eu-south-1 \
+  --max-items 10 --query 'Activities[].[StartTime,StatusCode,Cause]' --output text</pre></div>
+</section>
+
+<section id="autoscaling">
+<h2><span class="num">06</span> Autoscaling</h2>
+<p class="lead">Tre livelli distinti che si confondono facilmente: HPA scala i pod, Cluster Autoscaler o Karpenter scalano i nodi, VPA cambia le richieste dei pod.</p>
+<table>
+<thead><tr><th style="width:150px">Componente</th><th>Cosa muove</th><th>Come decide</th></tr></thead>
+<tbody>
+<tr><td><strong>HPA</strong></td><td>Numero di repliche di un Deployment</td><td>Metriche (CPU/memoria via metrics-server, o custom). Nessun legame con AWS.</td></tr>
+<tr><td><strong>Cluster Autoscaler</strong></td><td>desiredSize dei node group</td><td>Guarda i pod <code>Pending</code> e alza l'ASG. Vuole i tag <code>k8s.io/cluster-autoscaler/…</code> sull'ASG e un ruolo IRSA.</td></tr>
+<tr><td><strong>Karpenter</strong></td><td>Istanze EC2 dirette, senza ASG</td><td>Calcola l'istanza migliore per i pod pendenti, la avvia in ~40 s, e consolida spegnendo nodi sottoutilizzati.</td></tr>
+<tr><td><strong>VPA</strong></td><td>requests/limits dei pod</td><td>Storico dei consumi. Da usare in modalità <code>Off</code> per raccomandazioni, prima di lasciarlo agire.</td></tr>
+</tbody>
+</table>
+<div class="cmd"><div class="cap">metrics-server: prerequisito di HPA, non è installato di default</div><pre>kubectl top nodes
+kubectl top pods -A --sort-by=memory | head -20</pre></div>
+<div class="cmd"><div class="cap">tag richiesti sull'ASG per il Cluster Autoscaler</div><pre>aws autoscaling create-or-update-tags --region eu-south-1 --tags \
+  ResourceId=$ASG,ResourceType=auto-scaling-group,Key=k8s.io/cluster-autoscaler/enabled,Value=true,PropagateAtLaunch=false \
+  ResourceId=$ASG,ResourceType=auto-scaling-group,Key=k8s.io/cluster-autoscaler/a-4510-eks-mil-cluster-p-01,Value=owned,PropagateAtLaunch=false</pre></div>
+<div class="note"><p>Cluster Autoscaler e Karpenter <strong>non</strong> vanno usati insieme sugli stessi workload. Su un cluster con node group tipizzati per ruolo come il tuo, il Cluster Autoscaler è la scelta coerente: Karpenter dà il meglio quando accetti che la forma della flotta la decida lui.</p></div>
+</section>
+
+<section id="network">
+<h2><span class="num">07</span> Rete: VPC, CNI e il conto degli IP</h2>
+<p class="lead">Su EKS ogni pod prende un IP reale della VPC. Niente overlay, niente NAT interno: è la differenza più grossa rispetto a un cluster on-prem con OVN, e ha una conseguenza pratica pesante — gli IP finiscono.</p>
+
+<h3>Il vincolo che sorprende: max pods per nodo</h3>
+<p>Il VPC CNI assegna a ogni pod un IP secondario di una ENI dell'istanza. Quante ENI e quanti IP per ENI dipende dal tipo di istanza, quindi il numero massimo di pod per nodo è una proprietà dell'hardware, non una scelta.</p>
+<div class="cmd out"><div class="cap">formula (senza prefix delegation)</div><pre>max_pods = ( ENI_max × (IPv4_per_ENI − 1) ) + 2</pre></div>
+<table>
+<thead><tr><th>Istanza</th><th>ENI</th><th>IP per ENI</th><th>max pods</th></tr></thead>
+<tbody>
+<tr><td><code>t3.medium</code></td><td>3</td><td>6</td><td>17</td></tr>
+<tr><td><code>m5.large</code> / <code>m6i.large</code></td><td>3</td><td>10</td><td>29</td></tr>
+<tr><td><code>m5.xlarge</code> / <code>m6i.xlarge</code></td><td>4</td><td>15</td><td>58</td></tr>
+<tr><td><code>m5.2xlarge</code></td><td>4</td><td>15</td><td>58</td></tr>
+<tr><td><code>m5.4xlarge</code></td><td>8</td><td>30</td><td>234</td></tr>
+</tbody>
+</table>
+<p class="sub">I sidecar contano. Un cluster con service mesh consuma un IP per pod applicativo comunque, ma raddoppia i container: è la CPU a finire prima, non gli IP. Senza mesh, su nodi piccoli, finiscono prima gli IP.</p>
+
+<div class="cmd"><div class="cap">verificare il valore reale in uso su un nodo</div><pre>kubectl get node &lt;nodo&gt; -o jsonpath='{.status.allocatable.pods}{"\n"}'</pre></div>
+<div class="cmd"><div class="cap">prefix delegation: alza drasticamente il tetto assegnando /28 invece di singoli IP</div><pre>kubectl set env daemonset aws-node -n kube-system ENABLE_PREFIX_DELEGATION=true
+kubectl set env daemonset aws-node -n kube-system WARM_PREFIX_TARGET=1</pre></div>
+<p class="sub">Va abilitata prima che le subnet siano frammentate: richiede blocchi <code>/28</code> contigui liberi. Su una VPC vissuta a lungo può fallire proprio per frammentazione.</p>
+
+<h3>Subnet, AZ e il tag che serve ai load balancer</h3>
+<table>
+<thead><tr><th style="width:230px">Tag sulla subnet</th><th>Serve a</th></tr></thead>
+<tbody>
+<tr><td><code>kubernetes.io/role/elb = 1</code></td><td>Subnet pubbliche → dove il Load Balancer Controller crea gli ALB/NLB internet-facing</td></tr>
+<tr><td><code>kubernetes.io/role/internal-elb = 1</code></td><td>Subnet private → load balancer interni</td></tr>
+<tr><td><code>kubernetes.io/cluster/&lt;nome-cluster&gt; = shared|owned</code></td><td>Discovery del cluster (storico, ancora usato da diversi controller)</td></tr>
+</tbody>
+</table>
+<div class="cmd"><div class="cap">IP liberi per subnet: il numero da guardare prima di scalare</div><pre>aws ec2 describe-subnets --region eu-south-1 \
+  --filters "Name=tag:kubernetes.io/cluster/a-4510-eks-mil-cluster-p-01,Values=owned,shared" \
+  --query 'Subnets[].{id:SubnetId,az:AvailabilityZone,cidr:CidrBlock,free:AvailableIpAddressCount}' --output table</pre></div>
+
+<h3>Endpoint del control plane</h3>
+<p>L'API server ha due endpoint, e la combinazione decide chi può fare <code>kubectl</code> e come i nodi parlano con il control plane.</p>
+<table>
+<thead><tr><th style="width:190px">Configurazione</th><th>Effetto</th></tr></thead>
+<tbody>
+<tr><td>Public</td><td>API raggiungibile da Internet (filtrabile per CIDR). I nodi escono verso l'endpoint pubblico via NAT.</td></tr>
+<tr><td>Public + Private</td><td>Configurazione più comune: dall'esterno via CIDR autorizzati, dai nodi via DNS privato dentro la VPC.</td></tr>
+<tr><td>Private only</td><td>Nessun accesso da Internet: <code>kubectl</code> solo da dentro la VPC, da un bastion o via VPN/Direct Connect. È l'assetto tipico degli ambienti bancari.</td></tr>
+</tbody>
+</table>
+<div class="cmd"><div class="cap">stato attuale degli endpoint e delle CIDR autorizzate</div><pre>aws eks describe-cluster --name a-4510-eks-mil-cluster-p-01 --region eu-south-1 \
+  --query 'cluster.resourcesVpcConfig.{public:endpointPublicAccess,private:endpointPrivateAccess,cidrs:publicAccessCidrs,sg:clusterSecurityGroupId,subnets:subnetIds}'</pre></div>
+<div class="cmd"><div class="cap">restringere l'accesso pubblico a una lista di CIDR aziendali</div><pre>aws eks update-cluster-config --name a-4510-eks-mil-cluster-p-01 --region eu-south-1 \
+  --resources-vpc-config endpointPublicAccess=true,endpointPrivateAccess=true,publicAccessCidrs="203.0.113.0/24"</pre></div>
+<div class="warn"><p>In private-only servono gli <strong>VPC endpoint</strong> per i servizi che i nodi usano, altrimenti il bootstrap fallisce in silenzio: <code>ecr.api</code>, <code>ecr.dkr</code>, <code>s3</code> (gateway, per i layer delle immagini), <code>ec2</code>, <code>sts</code>, <code>logs</code>, <code>elasticloadbalancing</code>. Il sintomo classico è un nodo che resta fuori dal cluster o pod fermi in <code>ImagePullBackOff</code> con timeout, non con 403.</p></div>
+
+<h3>Security group</h3>
+<p>Tre livelli, spesso confusi tra loro:</p>
+<ul>
+<li><strong>Cluster security group</strong> — creato da EKS, applicato al control plane e ai nodi gestiti. Consente il traffico nodi↔control plane. Toccarlo a mano è quasi sempre un errore.</li>
+<li><strong>SG del node group</strong> — quelli che aggiungi tu (via launch template) per il traffico verso database, storage, sistemi esterni.</li>
+<li><strong>Security group per pod</strong> — con <code>SecurityGroupPolicy</code> assegni un SG a un singolo pod tramite ENI dedicata. Utile quando un solo microservizio deve raggiungere un DB con regole strette, ma richiede <code>ENABLE_POD_ENI=true</code> e non è supportato su tutti i tipi di istanza.</li>
+</ul>
+<div class="cmd yaml"><div class="cap">SecurityGroupPolicy — SG applicato ai soli pod di un ServiceAccount</div><pre>apiVersion: vpcresources.k8s.aws/v1beta1
+kind: SecurityGroupPolicy
+metadata:
+  name: db-access
+  namespace: app-prod
+spec:
+  serviceAccountSelector:
+    matchLabels:
+      app: payments
+  securityGroups:
+    groupIds:
+      - sg-0db1122334455</pre></div>
+
+<h3>Esporre servizi</h3>
+<table>
+<thead><tr><th style="width:170px">Oggetto</th><th>Cosa crea in AWS</th></tr></thead>
+<tbody>
+<tr><td><code>Service type=LoadBalancer</code></td><td>Con il Load Balancer Controller: un NLB. Senza controller: il vecchio CLB dell'in-tree provider.</td></tr>
+<tr><td><code>Ingress</code> + classe <code>alb</code></td><td>Un Application Load Balancer, con target group verso i pod (target-type <code>ip</code>) o verso i NodePort (<code>instance</code>).</td></tr>
+<tr><td>Gateway API</td><td>Supportata dal LBC recente; è la strada dove sta andando l'ecosistema dopo il ritiro di ingress-nginx upstream.</td></tr>
+</tbody>
+</table>
+<div class="cmd yaml"><div class="cap">annotation ALB che usi davvero, interno e con TLS</div><pre>metadata:
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-south-1:122610509347:certificate/xxxx-xxxx
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
+    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=120</pre></div>
+</section>
+
+<section id="storage">
+<h2><span class="num">08</span> Storage</h2>
+<p class="lead">EBS per i volumi a singolo nodo, EFS quando serve ReadWriteMany. Entrambi arrivano come driver CSI, ed entrambi hanno bisogno di un ruolo IRSA per poter creare volumi.</p>
+<table>
+<thead><tr><th style="width:110px"></th><th>EBS CSI</th><th>EFS CSI</th></tr></thead>
+<tbody>
+<tr><td>Access mode</td><td>ReadWriteOnce — un solo nodo alla volta</td><td>ReadWriteMany — condiviso fra pod e AZ</td></tr>
+<tr><td>Vincolo AZ</td><td>Il volume è legato a una AZ: il pod ci torna sempre</td><td>Nessuno, è NFS gestito</td></tr>
+<tr><td>Prestazioni</td><td>Basse latenze, IOPS dichiarabili (gp3)</td><td>Latenza NFS, throughput a burst o provisioned</td></tr>
+<tr><td>Uso tipico</td><td>Database, code, storage di stato</td><td>Contenuti condivisi, file di appoggio fra pod</td></tr>
+</tbody>
+</table>
+<p>Nel tuo cluster l'EBS CSI Driver è già add-on gestito, in versione <code>v1.41.0-eksbuild.1</code>, con ruolo IRSA <code>a-4510-eks-mil-cluster-p-01-EBSCSIController</code>. Quel ruolo è ciò che permette al controller di chiamare <code>ec2:CreateVolume</code> e <code>ec2:AttachVolume</code>: se qualcuno lo tocca, i PVC restano <code>Pending</code> per sempre.</p>
+
+<div class="cmd yaml"><div class="cap">StorageClass gp3 con espansione — la default sensata</div><pre>apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.aws.com
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+parameters:
+  type: gp3
+  iops: "3000"
+  throughput: "125"
+  encrypted: "true"
+  kmsKeyId: arn:aws:kms:eu-south-1:122610509347:key/xxxxxxxx-xxxx</pre></div>
+<p class="sub"><code>WaitForFirstConsumer</code> non è un dettaglio: senza, il volume viene creato in una AZ a caso e il pod può restare <code>Pending</code> perché non c'è capacità in quella zona.</p>
+
+<div class="cmd"><div class="cap">PVC che non lega: la causa vera è quasi sempre nei log del controller</div><pre>kubectl describe pvc &lt;pvc&gt; -n &lt;ns&gt;
+kubectl -n kube-system logs deploy/ebs-csi-controller -c csi-provisioner --tail=100</pre></div>
+<div class="cmd"><div class="cap">volumi EBS del cluster visti da AWS, con il PVC di origine</div><pre>aws ec2 describe-volumes --region eu-south-1 \
+  --filters "Name=tag:kubernetes.io/cluster/a-4510-eks-mil-cluster-p-01,Values=owned" \
+  --query 'Volumes[].{id:VolumeId,size:Size,type:VolumeType,state:State,az:AvailabilityZone,pvc:Tags[?Key==`kubernetes.io/created-for/pvc/name`]|[0].Value}' --output table</pre></div>
+<div class="note"><p>Con <code>reclaimPolicy: Delete</code> il volume EBS sparisce insieme al PVC. Per gli stateful che contano usa una StorageClass con <code>Retain</code>: costa qualche volume orfano da ripulire, ma evita la telefonata brutta.</p></div>
+</section>
+
+<section id="addon">
+<h2><span class="num">09</span> Add-on — i componenti di sistema, versionati da EKS</h2>
+<p class="lead">Un add-on EKS è un componente che in un cluster vanilla installeresti a mano con un manifest o un chart — CNI, kube-proxy, CoreDNS, driver CSI — e che qui viene installato, versionato e aggiornato dall'API di EKS.</p>
+
+<p>La differenza pratica: senza add-on gestito, l'aggiornamento di quei componenti durante un upgrade Kubernetes è un tuo problema, con un manifest da scaricare dalla versione giusta. Con l'add-on gestito, chiedi una versione e EKS applica il manifest corretto, decidendo cosa fare se hai modificato i campi a mano (<code>resolveConflicts</code>).</p>
+
+<h3>I sei del tuo cluster</h3>
+<table>
+<thead><tr><th style="width:190px">Add-on</th><th>Cosa fa</th><th>IRSA</th></tr></thead>
+<tbody>
+<tr><td><code>vpc-cni</code></td><td>Assegna gli IP della VPC ai pod. È il pezzo di rete: si aggiorna con cautela e mai in contemporanea ad altro.</td><td>Consigliato (<code>aws-node</code>)</td></tr>
+<tr><td><code>kube-proxy</code></td><td>Programma le regole iptables/IPVS per i Service. Deve seguire da vicino la versione del control plane.</td><td>Non serve</td></tr>
+<tr><td><code>coredns</code></td><td>DNS interno del cluster. Due repliche di default: su cluster grandi vanno alzate.</td><td>Non serve</td></tr>
+<tr><td><code>aws-ebs-csi-driver</code></td><td>Crea, attacca e monta i volumi EBS. <code>v1.41.0-eksbuild.1</code> nel tuo cluster.</td><td>Sì — <code>…-EBSCSIController</code></td></tr>
+<tr><td><code>eks-pod-identity-agent</code></td><td>Alternativa a IRSA, se installato. La colonna "EKS Pod Identity: Not set" dice che non lo stai usando.</td><td>—</td></tr>
+<tr><td><code>metrics-server</code> / altri</td><td>Metriche per HPA e <code>kubectl top</code>, oppure osservabilità.</td><td>Dipende</td></tr>
+</tbody>
+</table>
+
+<h4>Comandi</h4>
+<div class="cmd"><div class="cap">cosa ho installato e a che versione</div><pre>aws eks list-addons --cluster-name a-4510-eks-mil-cluster-p-01 --region eu-south-1 --output table</pre></div>
+<div class="cmd"><div class="cap">stato e ruolo IRSA di un add-on</div><pre>aws eks describe-addon --cluster-name a-4510-eks-mil-cluster-p-01 --addon-name aws-ebs-csi-driver --region eu-south-1 \
+  --query 'addon.{v:addonVersion,status:status,role:serviceAccountRoleArn,issues:health.issues}'</pre></div>
+<div class="cmd"><div class="cap">quali versioni sono compatibili con la versione Kubernetes di destinazione</div><pre>aws eks describe-addon-versions --addon-name vpc-cni --kubernetes-version 1.33 --region eu-south-1 \
+  --query 'addons[].addonVersions[].{version:addonVersion,default:compatibilities[0].defaultVersion}' --output table</pre></div>
+<div class="cmd"><div class="cap">aggiornare un add-on preservando le modifiche fatte a mano</div><pre>aws eks update-addon --cluster-name a-4510-eks-mil-cluster-p-01 --region eu-south-1 \
+  --addon-name aws-ebs-csi-driver --addon-version v1.4x.x-eksbuild.x \
+  --resolve-conflicts PRESERVE</pre></div>
+
+<table>
+<thead><tr><th style="width:150px"><code>--resolve-conflicts</code></th><th>Comportamento</th></tr></thead>
+<tbody>
+<tr><td><code>NONE</code></td><td>Se hai modificato campi che l'add-on gestisce, l'update fallisce. Default prudente.</td></tr>
+<tr><td><code>PRESERVE</code></td><td>Tiene le tue modifiche e aggiorna il resto. È quello giusto se hai tunato risorse o variabili d'ambiente.</td></tr>
+<tr><td><code>OVERWRITE</code></td><td>Riporta tutto al manifest AWS. Le tue personalizzazioni spariscono senza avviso.</td></tr>
+</tbody>
+</table>
+
+<div class="cmd"><div class="cap">passare un add-on esistente sotto gestione EKS senza reinstallarlo</div><pre>aws eks create-addon --cluster-name a-4510-eks-mil-cluster-p-01 --region eu-south-1 \
+  --addon-name coredns --resolve-conflicts OVERWRITE</pre></div>
+<div class="cmd"><div class="cap">personalizzare la configurazione senza uscire dall'add-on gestito</div><pre>aws eks update-addon --cluster-name a-4510-eks-mil-cluster-p-01 --region eu-south-1 \
+  --addon-name coredns \
+  --configuration-values '{"replicaCount":3,"resources":{"requests":{"cpu":"200m","memory":"128Mi"}}}'</pre></div>
+<p class="sub">Lo schema accettato lo leggi con <code>aws eks describe-addon-configuration --addon-name coredns --addon-version &lt;v&gt;</code>: evita di tirare a indovinare le chiavi.</p>
+
+<div class="warn"><p>"New versions are available for 6 add-ons" nel tuo cluster non è un dettaglio cosmetico: gli add-on hanno finestre di compatibilità con la versione Kubernetes, e nell'upgrade a 1.33 alcuni di questi <em>devono</em> salire prima o insieme al control plane. Vedi l'ordine nella sezione upgrade.</p></div>
+</section>
+
+<section id="accessi">
+<h2><span class="num">10</span> Accessi al cluster — dove IAM incontra RBAC</h2>
+<p class="lead">Per entrare in un cluster EKS servono due permessi distinti: uno IAM per farsi autenticare, e uno RBAC per poter fare qualcosa. Storicamente il ponte era il ConfigMap <code>aws-auth</code>; oggi è l'API delle access entry.</p>
+
+<div class="svgwrap">
+<svg viewBox="0 0 900 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Percorso di autenticazione e autorizzazione verso il cluster">
+<defs><marker id="ar3" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#8fa2b8"/></marker>
+<style>.b{font:500 12.5px "IBM Plex Sans",sans-serif;fill:#e4ecf6}.x{font:400 10.5px "IBM Plex Mono",monospace;fill:#8fa2b8}</style></defs>
+<rect x="14" y="46" width="190" height="80" rx="10" fill="#1a1424" stroke="#b18cff"/>
+<text x="32" y="72" class="b" fill="#b18cff">Principal IAM</text><text x="32" y="92" class="x">role/utente o role SSO</text><text x="32" y="110" class="x">token firmato da aws eks get-token</text>
+
+<rect x="248" y="46" width="190" height="80" rx="10" fill="#151016" stroke="#ff9f43"/>
+<text x="266" y="72" class="b" fill="#ff9f43">Access entry</text><text x="266" y="92" class="x">mappa l'ARN IAM a</text><text x="266" y="110" class="x">username e gruppi K8s</text>
+
+<rect x="482" y="46" width="190" height="80" rx="10" fill="#0f1720" stroke="#5fa8ff"/>
+<text x="500" y="72" class="b" fill="#5fa8ff">RBAC del cluster</text><text x="500" y="92" class="x">ClusterRoleBinding sul gruppo</text><text x="500" y="110" class="x">o access policy EKS</text>
+
+<rect x="716" y="46" width="170" height="80" rx="10" fill="#101d1c" stroke="#2fc8b8"/>
+<text x="734" y="72" class="b" fill="#2fc8b8">Azione permessa</text><text x="734" y="92" class="x">get pods, delete deploy…</text>
+
+<path d="M204 86 L240 86" stroke="#8fa2b8" stroke-width="1.3" marker-end="url(#ar3)"/>
+<path d="M438 86 L474 86" stroke="#8fa2b8" stroke-width="1.3" marker-end="url(#ar3)"/>
+<path d="M672 86 L708 86" stroke="#8fa2b8" stroke-width="1.3" marker-end="url(#ar3)"/>
+<text x="14" y="166" class="x">Errore "You must be logged in to the server (Unauthorized)" → manca il passo 2: il tuo ARN non è mappato.</text>
+<text x="14" y="184" class="x">Errore "forbidden: User ... cannot list resource" → il passo 2 c'è, manca il passo 3: sei dentro ma senza diritti.</text>
+</svg>
+</div>
+
+<h3>aws-auth o access entry?</h3>
+<table>
+<thead><tr><th style="width:180px"></th><th>ConfigMap aws-auth</th><th>Access entry (API)</th></tr></thead>
+<tbody>
+<tr><td>Dove vive</td><td>Un ConfigMap in <code>kube-system</code>: per modificarlo devi già essere dentro</td><td>API AWS: gestibile con IAM, Terraform, CloudFormation</td></tr>
+<tr><td>Errore tipico</td><td>Un YAML sbagliato ti chiude fuori dal cluster, senza rimedio semplice</td><td>Nessun lock-out: correggi da AWS</td></tr>
+<tr><td>Audit</td><td>Nessuno</td><td>CloudTrail</td></tr>
+<tr><td>Modalità del cluster</td><td><code>CONFIG_MAP</code></td><td><code>API</code> oppure <code>API_AND_CONFIG_MAP</code> per la transizione</td></tr>
+</tbody>
+</table>
+<div class="cmd"><div class="cap">quale modalità è attiva ora</div><pre>aws eks describe-cluster --name a-4510-eks-mil-cluster-p-01 --region eu-south-1 --query 'cluster.accessConfig'</pre></div>
+<div class="cmd"><div class="cap">abilitare le access entry senza rompere aws-auth (passo sicuro, reversibile in avanti)</div><pre>aws eks update-cluster-config --name a-4510-eks-mil-cluster-p-01 --region eu-south-1 \
+  --access-config authenticationMode=API_AND_CONFIG_MAP</pre></div>
+<p class="sub">La transizione è a senso unico: da <code>CONFIG_MAP</code> puoi andare a <code>API_AND_CONFIG_MAP</code> e poi a <code>API</code>, mai tornare indietro. Prima di passare a <code>API</code> puro, verifica che ogni riga di <code>aws-auth</code> abbia la sua access entry — nodi compresi.</p>
+
+<div class="cmd"><div class="cap">dare accesso in lettura a un ruolo, con una policy EKS già pronta</div><pre>aws eks create-access-entry --cluster-name a-4510-eks-mil-cluster-p-01 --region eu-south-1 \
+  --principal-arn arn:aws:iam::122610509347:role/a-4510-ops-readonly
+
+aws eks associate-access-policy --cluster-name a-4510-eks-mil-cluster-p-01 --region eu-south-1 \
+  --principal-arn arn:aws:iam::122610509347:role/a-4510-ops-readonly \
+  --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy \
+  --access-scope type=cluster</pre></div>
+<table>
+<thead><tr><th style="width:280px">Access policy</th><th>Equivalente RBAC</th></tr></thead>
+<tbody>
+<tr><td><code>AmazonEKSClusterAdminPolicy</code></td><td><code>cluster-admin</code> — da tenere per pochissimi</td></tr>
+<tr><td><code>AmazonEKSAdminPolicy</code></td><td>Admin su namespace, senza toccare oggetti cluster-wide critici</td></tr>
+<tr><td><code>AmazonEKSEditPolicy</code></td><td>Modifica dei workload</td></tr>
+<tr><td><code>AmazonEKSViewPolicy</code></td><td>Sola lettura</td></tr>
+</tbody>
+</table>
+<p class="sub">Con <code>--access-scope type=namespace,namespaces=app-prod,app-coll</code> limiti la stessa policy a specifici namespace: è il modo pulito per dare "edit solo sul mio namespace" a un team applicativo senza scrivere RBAC a mano.</p>
+
+<div class="cmd"><div class="cap">mappatura legacy: chi c'è dentro aws-auth oggi</div><pre>kubectl -n kube-system get configmap aws-auth -o yaml</pre></div>
+<div class="cmd"><div class="cap">kubeconfig per il cluster, con alias leggibile</div><pre>aws eks update-kubeconfig --name a-4510-eks-mil-cluster-p-01 --region eu-south-1 --alias eks-mil-prod</pre></div>
+<div class="cmd"><div class="cap">verificare i propri diritti prima di provare un'azione</div><pre>kubectl auth can-i --list --namespace app-prod
+kubectl auth can-i delete deployments -n app-prod</pre></div>
+<div class="warn"><p>Se usi un ruolo assunto (SSO, <code>assume-role</code>), l'ARN da mappare è quello del <strong>ruolo</strong> — <code>arn:aws:iam::…:role/NomeRuolo</code> — non quello della sessione <code>arn:aws:sts::…:assumed-role/NomeRuolo/utente</code>. È la causa numero uno di "Unauthorized" con credenziali apparentemente valide.</p></div>
+</section>
+
+<section id="ecr">
+<h2><span class="num">11</span> ECR — il registry</h2>
+<p class="lead">ECR è il registry di AWS. L'autenticazione non è una password fissa: è un token di 12 ore che ti fai emettere da IAM. Per i nodi, invece, è trasparente: se il node role ha la policy giusta, il pull funziona senza <code>imagePullSecrets</code>.</p>
+<div class="cmd"><div class="cap">login docker/podman al registry dell'account</div><pre>aws ecr get-login-password --region eu-south-1 | docker login --username AWS --password-stdin 122610509347.dkr.ecr.eu-south-1.amazonaws.com</pre></div>
+<div class="cmd"><div class="cap">creare un repository con scan automatico e immutabilità dei tag</div><pre>aws ecr create-repository --repository-name myapp --region eu-south-1 \
+  --image-scanning-configuration scanOnPush=true --image-tag-mutability IMMUTABLE</pre></div>
+<div class="cmd"><div class="cap">build, tag, push</div><pre>docker build -t myapp:1.4.0 .
+docker tag myapp:1.4.0 122610509347.dkr.ecr.eu-south-1.amazonaws.com/myapp:1.4.0
+docker push 122610509347.dkr.ecr.eu-south-1.amazonaws.com/myapp:1.4.0</pre></div>
+<div class="cmd"><div class="cap">cosa c'è dentro, ordinato per data</div><pre>aws ecr describe-images --repository-name myapp --region eu-south-1 \
+  --query 'sort_by(imageDetails,&amp;imagePushedAt)[-10:].{tag:imageTags[0],pushed:imagePushedAt,mb:imageSizeInBytes}' --output table</pre></div>
+<div class="cmd json"><div class="cap">lifecycle policy: tieni 20 immagini taggate, butta le untagged dopo 7 giorni</div><pre>{
+  "rules": [
+    { "rulePriority": 1, "description": "keep last 20 tagged",
+      "selection": { "tagStatus": "tagged", "tagPrefixList": ["v","release"], "countType": "imageCountMoreThan", "countNumber": 20 },
+      "action": { "type": "expire" } },
+    { "rulePriority": 2, "description": "expire untagged after 7 days",
+      "selection": { "tagStatus": "untagged", "countType": "sinceImagePushed", "countUnit": "days", "countNumber": 7 },
+      "action": { "type": "expire" } }
+  ]
+}</pre></div>
+<p class="sub">Applicala con <code>aws ecr put-lifecycle-policy --repository-name myapp --lifecycle-policy-text file://policy.json --region eu-south-1</code>.</p>
+<div class="note"><p><strong>Pull cross-account.</strong> Se il cluster sta in un account e il registry in un altro, serve una <em>repository policy</em> sul repo che autorizza il node role dell'altro account. Il fallimento tipico è <code>403 Forbidden</code> in <code>ImagePullBackOff</code>: 403 significa "autenticato ma non autorizzato", quindi guardi la policy del repository, non il login.</p></div>
+</section>
+
+<section id="observ">
+<h2><span class="num">12</span> Log e osservabilità</h2>
+<p class="lead">I log del control plane non esistono finché non li accendi, e quando li accendi cominciano a costare. Vanno attivati con criterio: <code>audit</code> e <code>authenticator</code> sono quelli che risolvono i casi veri.</p>
+<table>
+<thead><tr><th style="width:170px">Tipo di log</th><th>A cosa serve</th></tr></thead>
+<tbody>
+<tr><td><code>api</code></td><td>Richieste all'API server: latenze, errori, throttling</td></tr>
+<tr><td><code>audit</code></td><td>Chi ha fatto cosa e quando. Indispensabile in contesto bancario</td></tr>
+<tr><td><code>authenticator</code></td><td>Traduzione IAM → identità Kubernetes: è qui che si legge perché un accesso è stato rifiutato</td></tr>
+<tr><td><code>controllerManager</code> / <code>scheduler</code></td><td>Pod che non partono, volumi che non si attaccano, scheduling anomalo</td></tr>
+</tbody>
+</table>
+<div class="cmd"><div class="cap">quali log sono attivi</div><pre>aws eks describe-cluster --name a-4510-eks-mil-cluster-p-01 --region eu-south-1 \
+  --query 'cluster.logging.clusterLogging[].{types:types,enabled:enabled}'</pre></div>
+<div class="cmd"><div class="cap">attivare audit e authenticator</div><pre>aws eks update-cluster-config --name a-4510-eks-mil-cluster-p-01 --region eu-south-1 \
+  --logging '{"clusterLogging":[{"types":["audit","authenticator"],"enabled":true}]}'</pre></div>
+<div class="cmd"><div class="cap">cercare nell'audit chi ha cancellato un deployment (CloudWatch Logs Insights via CLI)</div><pre>aws logs start-query --region eu-south-1 \
+  --log-group-name /aws/eks/a-4510-eks-mil-cluster-p-01/cluster \
+  --start-time $(date -v-2H +%s) --end-time $(date +%s) \
+  --query-string 'fields @timestamp, user.username, verb, objectRef.resource, objectRef.name | filter verb="delete" | sort @timestamp desc | limit 50'</pre></div>
+<p class="sub">Su Linux, <code>date -d '2 hours ago' +%s</code> al posto di <code>date -v-2H</code>.</p>
+<div class="cmd"><div class="cap">eventi del cluster in ordine cronologico — il primo posto dove guardare, sempre</div><pre>kubectl get events -A --sort-by=.lastTimestamp | tail -40</pre></div>
+</section>
+
+<section id="upgrade">
+<h2><span class="num">13</span> Upgrade runbook</h2>
+<p class="lead">Un upgrade EKS è sempre lo stesso ciclo ripetuto per un solo minor alla volta: verifiche, control plane, nodi, add-on. Non si salta una versione e non si torna indietro.</p>
+
+<div class="svgwrap">
+<svg viewBox="0 0 900 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Finestre di supporto e strada da 1.32 a una versione in supporto standard">
+<defs><style>
+  .b{font:500 12px "IBM Plex Sans",sans-serif;fill:#e4ecf6}
+  .x{font:400 10.5px "IBM Plex Mono",monospace;fill:#8fa2b8}
+  .y{font:600 11px "IBM Plex Mono",monospace;fill:#0a0e13}
+</style></defs>
+<text x="16" y="26" class="b">Dove sei, e quanto ti costa restarci</text>
+
+<text x="16" y="62" class="x" fill="#ff6b6b">1.32 — oggi</text>
+<rect x="150" y="48" width="180" height="20" rx="4" fill="#2a3b4d"/><text x="160" y="62" class="x" fill="#c9d8e8">standard fino a 23 mar 2026</text>
+<rect x="330" y="48" width="290" height="20" rx="4" fill="#4a2226" stroke="#ff6b6b"/><text x="342" y="62" class="x" fill="#ffb3b3">extended · 0,60 $/h fino a 23 mar 2027</text>
+<circle cx="472" cy="58" r="4" fill="#ff6b6b"/><text x="484" y="44" class="x" fill="#ff6b6b">tu sei qui</text>
+
+<text x="16" y="102" class="x">1.33</text>
+<rect x="150" y="88" width="290" height="20" rx="4" fill="#2a3b4d"/><text x="160" y="102" class="x" fill="#c9d8e8">standard terminato ago 2026 → anche questa è extended</text>
+<rect x="440" y="88" width="180" height="20" rx="4" fill="#3a2b2f"/><text x="450" y="102" class="x" fill="#c9a8ac">extended</text>
+
+<text x="16" y="142" class="x" fill="#5fd68a">1.34 · 1.35 · 1.36</text>
+<rect x="150" y="128" width="470" height="20" rx="4" fill="#1c3b2c" stroke="#5fd68a"/><text x="162" y="142" class="x" fill="#a8e8bf">supporto standard · 0,10 $/h — è qui che devi arrivare</text>
+
+<line x1="16" y1="172" x2="884" y2="172" stroke="#233043"/>
+<text x="16" y="196" class="b">Strada obbligata, un salto per volta</text>
+<g>
+  <rect x="16" y="208" width="70" height="26" rx="13" fill="#4a2226" stroke="#ff6b6b"/><text x="38" y="225" class="y" fill="#ffb3b3">1.32</text>
+  <text x="96" y="225" class="x">→</text>
+  <rect x="116" y="208" width="70" height="26" rx="13" fill="#3a2b2f" stroke="#8a6a70"/><text x="138" y="225" class="y" fill="#c9a8ac">1.33</text>
+  <text x="196" y="225" class="x">→</text>
+  <rect x="216" y="208" width="70" height="26" rx="13" fill="#1c3b2c" stroke="#5fd68a"/><text x="238" y="225" class="y" fill="#a8e8bf">1.34</text>
+  <text x="296" y="225" class="x">→</text>
+  <rect x="316" y="208" width="70" height="26" rx="13" fill="#1c3b2c" stroke="#5fd68a"/><text x="338" y="225" class="y" fill="#a8e8bf">1.35</text>
+  <text x="396" y="225" class="x">→</text>
+  <rect x="416" y="208" width="70" height="26" rx="13" fill="#1c3b2c" stroke="#5fd68a"/><text x="438" y="225" class="y" fill="#a8e8bf">1.36</text>
+  <text x="506" y="225" class="x">ogni salto: control plane, poi nodi, poi add-on. Nessun rollback.</text>
+</g>
+</svg>
+</div>
+
+<div class="warn"><p><strong>Il vincolo che ti riguarda per primo: Amazon Linux 2 finisce con 1.32.</strong> Da 1.33 in avanti AWS non pubblica più AMI EKS-optimized basate su AL2, solo AL2023. Se i tuoi tre node group sono su <code>AL2_x86_64</code>, il salto a 1.33 non è solo un cambio di versione: è anche un cambio di sistema operativo, con bootstrap diverso (<code>nodeadm</code> al posto di <code>bootstrap.sh</code>), cgroup v2 e default di sicurezza diversi. Verificalo <em>prima</em> di pianificare qualsiasi finestra.</p></div>
+<div class="cmd"><div class="cap">controllo AL2 / AL2023 sui tre gruppi — da fare subito</div><pre>for ng in $(aws eks list-nodegroups --cluster-name a-4510-eks-mil-cluster-p-01 --region eu-south-1 --query 'nodegroups[]' --output text); do
+  aws eks describe-nodegroup --cluster-name a-4510-eks-mil-cluster-p-01 --nodegroup-name $ng --region eu-south-1 \
+    --query "nodegroup.[nodegroupName,amiType,releaseVersion]" --output text
+done</pre></div>
+
+<h3>Fase 0 — verifiche, giorni prima</h3>
+<p>Le Upgrade Insights fanno da sole gran parte del lavoro di analisi: API deprecate ancora usate, kubelet troppo indietro, incompatibilità note. Il tuo cluster ne ha <strong>una in errore</strong>: quella va letta e risolta prima di tutto il resto.</p>
+<div class="cmd"><div class="cap">leggere le insight, partendo da quelle non conformi</div><pre>aws eks list-insights --cluster-name a-4510-eks-mil-cluster-p-01 --region eu-south-1 \
+  --query 'insights[].{id:id,name:name,status:insightStatus.status,reason:insightStatus.reason}' --output table</pre></div>
+<div class="cmd"><div class="cap">dettaglio: quali risorse e quali client stanno usando l'API deprecata</div><pre>aws eks describe-insight --cluster-name a-4510-eks-mil-cluster-p-01 --region eu-south-1 --id &lt;insight-id&gt; \
+  --query 'insight.{name:name,desc:description,rec:recommendation,details:categorySpecificSummary.deprecationDetails}'</pre></div>
+<div class="cmd"><div class="cap">quali versioni sono realmente disponibili come target</div><pre>aws eks describe-cluster-versions --region eu-south-1 --output table</pre></div>
+<ul>
+<li><strong>IP liberi</strong>: il control plane ha bisogno di indirizzi liberi nelle subnet per creare le nuove ENI durante l'aggiornamento. Subnet sature = upgrade che fallisce a metà.</li>
+<li><strong>PDB sensati</strong>: un PDB con <code>minAvailable</code> uguale alle repliche blocca ogni drain. Censiscili prima, non durante.</li>
+<li><strong>Capacità per il surge</strong>: durante l'update dei nodi EKS ne aggiunge di nuovi prima di togliere i vecchi. Servono quota EC2 e IP.</li>
+<li><strong>Compatibilità applicativa</strong>: chart Helm, operator, CRD e agent (Dynatrace e simili) hanno matrici di supporto proprie.</li>
+</ul>
+<div class="cmd"><div class="cap">censimento PDB rischiosi</div><pre>kubectl get pdb -A -o custom-columns='NS:.metadata.namespace,NAME:.metadata.name,MIN:.spec.minAvailable,MAX:.spec.maxUnavailable,ALLOWED:.status.disruptionsAllowed'</pre></div>
+<h3>Fase 0-bis — API deprecate: trovarle davvero</h3>
+<p>Le Upgrade Insights coprono le API rimosse nella prossima versione, ma vedono solo il traffico recente registrato dall'API server: un job che gira una volta al mese, o un chart mai applicato dopo l'ultimo deploy, non compaiono. Per questo si incrociano <strong>tre</strong> fonti: cosa il cluster ha ricevuto, cosa è installato adesso, cosa c'è nei tuoi manifest e chart.</p>
+
+<h4>1 · Cosa l'API server ha davvero ricevuto</h4>
+<div class="cmd"><div class="cap">contatore nativo dell'API server: ogni chiamata a un'API deprecata incrementa questa metrica</div><pre>kubectl get --raw /metrics | grep apiserver_requested_deprecated_apis</pre></div>
+<div class="cmd out"><div class="cap">lettura del risultato</div><pre>apiserver_requested_deprecated_apis{group="flowcontrol.apiserver.k8s.io",removed_release="1.32",resource="flowschemas",subresource="",version="v1beta3"} 1
+
+# group/version/resource = cosa viene chiamato
+# removed_release        = la versione in cui sparisce: se e' <= al tuo target, e' bloccante</pre></div>
+<p class="sub">La metrica dice <em>cosa</em>, non <em>chi</em>. Per il chiamante serve l'audit log: è l'unico posto dove compare lo <code>userAgent</code>.</p>
+<div class="cmd"><div class="cap">incrocio con l'audit: quale client usa quale API deprecata (richiede il log <code>audit</code> attivo)</div><pre>aws logs start-query --region eu-south-1 \
+  --log-group-name /aws/eks/a-4510-eks-mil-cluster-p-01/cluster \
+  --start-time $(date -d '30 days ago' +%s) --end-time $(date +%s) \
+  --query-string 'fields @timestamp, userAgent, user.username, objectRef.apiGroup, objectRef.apiVersion, objectRef.resource
+                  | filter objectRef.apiVersion like /beta/
+                  | stats count(*) by userAgent, objectRef.apiGroup, objectRef.apiVersion, objectRef.resource
+                  | sort count desc | limit 100'</pre></div>
+<div class="cmd"><div class="cap">recupero del risultato (la query è asincrona)</div><pre>aws logs get-query-results --region eu-south-1 --query-id &lt;query-id&gt;</pre></div>
+<p class="sub">Trenta giorni è il minimo sensato: sotto quella finestra i job mensili sfuggono. Se l'audit non è attivo da abbastanza tempo, accendilo <em>ora</em> e pianifica l'upgrade dopo un mese di raccolta.</p>
+
+<h4>2 · Cosa è installato adesso nel cluster</h4>
+<div class="cmd"><div class="cap">pluto contro le release Helm e gli oggetti live</div><pre>pluto detect-helm --target-versions k8s=v1.33 -A -o wide
+pluto detect-api-resources --target-versions k8s=v1.33 -o wide</pre></div>
+<div class="cmd"><div class="cap">kube-no-trouble sul cluster corrente</div><pre>kubent --target-version 1.33 --cluster --helm3 --exit-error</pre></div>
+<p class="sub"><code>--exit-error</code> restituisce exit code diverso da zero se trova qualcosa: è il modo per infilarlo in una pipeline e bloccare una promozione.</p>
+<div class="cmd"><div class="cap">CRD e API group non standard presenti — l'inventario da cui parte l'analisi operator</div><pre>kubectl api-resources --sort-by=name -o wide | grep -v -E '^(NAME|.*\.k8s\.io|.*kubernetes\.io)' | head -60
+kubectl get crd -o custom-columns='CRD:.metadata.name,GROUP:.spec.group,VERSIONS:.spec.versions[*].name,STORED:.status.storedVersions'</pre></div>
+<div class="cmd"><div class="cap">CRD ancora serviti su versioni beta: quelli sono i candidati a rompersi</div><pre>kubectl get crd -o json | jq -r '.items[] | select(.spec.versions[].name | test("v1beta|v1alpha")) | "\(.metadata.name)\t\(.spec.versions[].name)"' | sort -u</pre></div>
+
+<h4>3 · Cosa c'è nei manifest e nei chart, prima che vengano applicati</h4>
+<div class="cmd"><div class="cap">scansione statica di una directory di manifest o di un repo GitOps</div><pre>pluto detect-files -d ./manifests --target-versions k8s=v1.33 -o wide
+kubent --target-version 1.33 --filename ./manifests</pre></div>
+<div class="cmd"><div class="cap">chart Helm renderizzato prima di essere installato</div><pre>helm template mia-release ./chart -f values-prod.yaml | pluto detect - --target-versions k8s=v1.33</pre></div>
+<div class="cmd"><div class="cap">conversione automatica di un manifest a un'API più recente</div><pre>kubectl convert -f vecchio.yaml --output-version apps/v1 &gt; nuovo.yaml</pre></div>
+
+<div class="note"><p><strong>Attenzione allo storedVersion dei CRD.</strong> Un CRD può servire <code>v1</code> ma avere ancora <code>v1beta1</code> in <code>status.storedVersions</code>: finché è lì, la vecchia versione non può essere rimossa dal CRD e l'operator che la fornisce non può essere aggiornato senza una migrazione degli oggetti esistenti. Si risolve rileggendo e riscrivendo ogni oggetto di quel tipo, poi ripulendo <code>storedVersions</code> — procedura del vendor dell'operator, non improvvisabile.</p></div>
+
+<h3>Fase 0-ter — operator, controller e agent</h3>
+<p>Il control plane si aggiorna sempre; è tutto quello che ci sta sopra a rompersi. Ogni operator dichiara una finestra di versioni Kubernetes supportate, e su un cluster bancario ce ne sono più di quanti se ne ricordino. La regola operativa: <strong>censisci, verifica la matrice, aggiorna quelli fuori finestra prima del control plane</strong>.</p>
+
+<div class="cmd"><div class="cap">censimento: tutte le release Helm con chart e versione dell'app</div><pre>helm list -A -o table</pre></div>
+<div class="cmd"><div class="cap">censimento: ogni Deployment e DaemonSet fuori dai namespace applicativi, con l'immagine esatta</div><pre>kubectl get deploy,ds -A -o custom-columns='NS:.metadata.namespace,KIND:.kind,NAME:.metadata.name,IMAGE:.spec.template.spec.containers[*].image' \
+  | grep -E 'kube-system|monitoring|istio|cert-manager|argocd|external-secrets|dynatrace|operators'</pre></div>
+<div class="cmd"><div class="cap">censimento: operator installati via OLM, se presente</div><pre>kubectl get csv -A -o custom-columns='NS:.metadata.namespace,NAME:.metadata.name,VERSION:.spec.version,PHASE:.status.phase' 2&gt;/dev/null</pre></div>
+
+<table>
+<thead><tr><th style="width:230px">Componente installato sul cluster</th><th>Perché è sensibile all'upgrade</th><th>Come leggi la versione</th></tr></thead>
+<tbody>
+<tr><td><strong>Istio</strong><br><span class="sub">istio-base, istio-system, via Helm</span></td><td>Matrice di supporto stretta verso Kubernetes e webhook di injection con <code>failurePolicy</code> critico. L'ordine corretto è quasi sempre mesh prima, cluster dopo</td><td><code>istioctl version</code> · <code>helm list -n istio-system</code></td></tr>
+<tr><td><strong>cert-manager</strong></td><td>Conversion webhook sui propri CRD: se i pod del webhook sono giù durante il drain, ogni operazione su Certificate e Issuer fallisce, e con essa i rinnovi</td><td><code>helm list -A | grep cert-manager</code></td></tr>
+<tr><td><strong>EDB Postgres for Kubernetes</strong><br><span class="sub">postgresql-operator-system</span></td><td>Il più delicato dei tuoi: il drain dei nodi <code>dbworkers</code> provoca switchover dei cluster Postgres. Vanno verificati prima ruolo primario, stato della replica e PDB dei cluster gestiti</td><td><code>kubectl -n postgresql-operator-system get deploy -o wide</code> · <code>kubectl get cluster.postgresql.k8s.enterprisedb.io -A</code></td></tr>
+<tr><td><strong>Dynatrace Operator</strong><br><span class="sub">ns dynatrace</span></td><td>DaemonSet privilegiato che legge cgroup e container runtime: il salto AL2 → AL2023 (cgroup v2) lo tocca più della versione Kubernetes</td><td><code>kubectl -n dynatrace get deploy,ds -o wide</code></td></tr>
+<tr><td><strong>AWS Load Balancer Controller</strong><br><span class="sub">elbv2.k8s.aws</span></td><td>CRD <code>TargetGroupBinding</code> e webhook propri; le versioni vecchie non conoscono le API più recenti e possono rifiutare Ingress dopo l'upgrade</td><td><code>kubectl -n kube-system get deploy aws-load-balancer-controller -o jsonpath='{..image}'</code></td></tr>
+<tr><td><strong>Secrets Store CSI Driver</strong></td><td>Monta segreti come volumi tramite IRSA: dopo l'upgrade un pod che non riparte spesso è un mount fallito, non un problema applicativo</td><td><code>kubectl get ds -A | grep -i secrets-store</code></td></tr>
+<tr><td><strong>AWS Private CA issuer</strong></td><td>Estende cert-manager: va aggiornato in coppia con lui, mai da solo</td><td><code>kubectl get deploy -A | grep -i pca</code></td></tr>
+<tr><td><strong>CloudWatch Observability</strong><br><span class="sub">add-on gestito</span></td><td>Essendo add-on EKS ha una versione minima per ogni release Kubernetes: rientra nella Fase 2, non va dimenticato fra i "componenti terzi"</td><td><code>aws eks describe-addon --addon-name amazon-cloudwatch-observability --cluster-name a-4510-eks-mil-cluster-p-01 --region eu-south-1</code></td></tr>
+<tr><td><strong>VPC CNI network policy</strong><br><span class="sub">policyendpoints, eniconfigs</span></td><td>Fa parte del CNI: si aggiorna con l'add-on <code>vpc-cni</code>, mai separatamente e mai insieme al drain dei nodi</td><td><code>aws eks describe-addon --addon-name vpc-cni …</code></td></tr>
+</tbody>
+</table>
+<p class="sub">Nessun OLM, nessun Prometheus Operator, nessun Karpenter e nessuna Gateway API in questo cluster: l'inventario CRD è tutto qui, e semplifica parecchio l'analisi. I componenti senza CRD — cluster-autoscaler, metrics-server, agent vari — non compaiono in <code>kubectl get crd</code>: vanno cercati con l'inventario Deployment/DaemonSet qui sopra.</p>
+
+<div class="warn"><p><strong>Il gruppo <code>dbworkers</code> merita una fase a sé.</strong> Aggiornare quei nodi significa far ruotare i primari Postgres gestiti dall'operator EDB. Prima della finestra: verifica che ogni cluster abbia repliche in stato <code>healthy</code>, che il primario non sia sull'ultimo nodo da drenare, e che esista un backup valido. Durante: un nodo alla volta, con verifica dello switchover fra uno e l'altro. Se possibile, fai lo switchover controllato tu prima del drain, invece di lasciarlo provocare dall'eviction.</p></div>
+
+<div class="cmd"><div class="cap">stato dei cluster Postgres prima di toccare i nodi</div><pre>kubectl get cluster.postgresql.k8s.enterprisedb.io -A -o custom-columns='NS:.metadata.namespace,NAME:.metadata.name,INSTANCES:.spec.instances,READY:.status.readyInstances,PRIMARY:.status.currentPrimary,PHASE:.status.phase'</pre></div>
+<div class="cmd"><div class="cap">su quale nodo sta ogni primario</div><pre>kubectl get pods -A -l role=primary -o custom-columns='NS:.metadata.namespace,POD:.metadata.name,NODE:.spec.nodeName'</pre></div>
+
+<h4>Webhook: la trappola che blocca l'upgrade a metà</h4>
+<p>Un webhook ammissione con <code>failurePolicy: Fail</code> il cui backend non è raggiungibile rifiuta ogni scrittura sugli oggetti che intercetta. Durante il drain dei nodi succede esattamente questo: il pod del webhook viene sfrattato, e da quel momento le creazioni di pod falliscono.</p>
+<div class="cmd"><div class="cap">webhook bloccanti e loro backend</div><pre>kubectl get validatingwebhookconfigurations -o custom-columns='NAME:.metadata.name,POLICY:.webhooks[*].failurePolicy,SVC:.webhooks[*].clientConfig.service.name'
+kubectl get mutatingwebhookconfigurations -o custom-columns='NAME:.metadata.name,POLICY:.webhooks[*].failurePolicy,SVC:.webhooks[*].clientConfig.service.name'</pre></div>
+<p class="sub">Per ognuno con <code>Fail</code>: il servizio dietro deve avere più repliche, anti-affinity fra nodi e un PDB coerente, altrimenti l'upgrade dei nodi si auto-blocca. È il motivo tipico di un drain che resta appeso senza un errore evidente.</p>
+
+<h4>Prova generale su un cluster non produttivo</h4>
+<p>Il modo affidabile per validare operator e applicazioni resta ripetere l'intera sequenza su un ambiente gemello — collaudo o pre-produzione — con gli stessi chart e la stessa versione di partenza. Le insight e pluto trovano le API rotte; solo l'esecuzione trova i webhook lenti, i PDB assurdi e gli agent che non ripartono su AL2023.</p>
+
+<h3>Checklist di finestra</h3>
+<table>
+<thead><tr><th style="width:110px">Quando</th><th>Cosa</th></tr></thead>
+<tbody>
+<tr><td><strong>D-30</strong></td><td>Attiva i log <code>audit</code> e <code>authenticator</code> se spenti: servono trenta giorni di traffico per fidarsi dell'analisi delle API deprecate</td></tr>
+<tr><td><strong>D-14</strong></td><td>Insight risolte · pluto/kubent puliti su cluster, manifest e chart · matrice operator verificata · <code>amiType</code> dei tre gruppi noto (AL2 o AL2023)</td></tr>
+<tr><td><strong>D-7</strong></td><td>Stessa sequenza eseguita in collaudo, fino ai nodi · PDB e webhook rivisti · IP liberi nelle subnet e quota EC2 verificati · backup applicativo dei volumi che contano</td></tr>
+<tr><td><strong>D-1</strong></td><td>Freeze dei deploy · fotografia dello stato: <code>kubectl get all -A</code>, <code>kubectl get pv,pvc -A</code>, versioni add-on e node group salvate su file</td></tr>
+<tr><td><strong>D0</strong></td><td>Control plane → add-on minimi → un node group alla volta, dal meno critico · verifica funzionale fra un gruppo e l'altro</td></tr>
+<tr><td><strong>D+1</strong></td><td>Nessun pod fuori posto · insight nuovamente PASSING · agent di monitoraggio che riportano · costo del cluster tornato alla tariffa standard se sei uscito dall'extended</td></tr>
+</tbody>
+</table>
+
+<h3>Fase 1 — control plane</h3>
+<p>Dura tipicamente 25–40 minuti, non ha impatto sui workload in esecuzione, ma <strong>non è annullabile</strong>. Durante l'operazione l'API server resta disponibile.</p>
+<div class="cmd"><div class="cap">avvio</div><pre>aws eks update-cluster-version --name a-4510-eks-mil-cluster-p-01 --region eu-south-1 --kubernetes-version 1.33</pre></div>
+<div class="cmd"><div class="cap">seguirlo</div><pre>aws eks describe-update --name a-4510-eks-mil-cluster-p-01 --region eu-south-1 --update-id &lt;update-id&gt; \
+  --query 'update.{status:status,type:type,errors:errors}'</pre></div>
+<div class="cmd"><div class="cap">confermare a fine corsa</div><pre>aws eks describe-cluster --name a-4510-eks-mil-cluster-p-01 --region eu-south-1 --query 'cluster.[version,platformVersion,status]' --output text
+kubectl version</pre></div>
+
+<h3>Fase 2 — add-on che devono seguire subito</h3>
+<p>Alcuni add-on hanno un minimo compatibile con la nuova versione. <code>kube-proxy</code> in particolare non deve restare indietro rispetto al control plane, e il CNI va allineato prima di toccare i nodi.</p>
+<div class="cmd"><div class="cap">versione di default per la nuova release, add-on per add-on</div><pre>for a in vpc-cni kube-proxy coredns aws-ebs-csi-driver; do
+  echo "== $a"
+  aws eks describe-addon-versions --addon-name $a --kubernetes-version 1.33 --region eu-south-1 \
+    --query 'addons[0].addonVersions[?compatibilities[0].defaultVersion==`true`].addonVersion' --output text
+done</pre></div>
+<div class="cmd"><div class="cap">aggiornare, uno per volta, verificando i pod fra uno e l'altro</div><pre>aws eks update-addon --cluster-name a-4510-eks-mil-cluster-p-01 --region eu-south-1 \
+  --addon-name kube-proxy --addon-version &lt;versione&gt; --resolve-conflicts PRESERVE
+kubectl -n kube-system rollout status ds/kube-proxy</pre></div>
+
+<h3>Fase 3 — node group</h3>
+<p>Qui c'è l'impatto vero: ogni nodo viene sostituito, quindi ogni pod viene sfrattato almeno una volta. EKS fa cordon, drain e terminazione nel rispetto dei PDB.</p>
+<div class="cmd"><div class="cap">un gruppo alla volta, partendo dal meno critico</div><pre>aws eks update-nodegroup-version --cluster-name a-4510-eks-mil-cluster-p-01 --region eu-south-1 \
+  --nodegroup-name a-4510-eks-mil-apigwworkers-p-01 --kubernetes-version 1.33</pre></div>
+<div class="cmd"><div class="cap">solo AMI più recente, senza cambiare versione Kubernetes (patch di sicurezza del SO)</div><pre>aws eks update-nodegroup-version --cluster-name a-4510-eks-mil-cluster-p-01 --region eu-south-1 \
+  --nodegroup-name a-4510-eks-mil-mainworkers-p-01</pre></div>
+<div class="cmd"><div class="cap">osservare la sostituzione mentre avviene</div><pre>watch -n 20 "kubectl get nodes -L eks.amazonaws.com/nodegroup --sort-by=.metadata.creationTimestamp"</pre></div>
+<div class="warn"><p><code>--force</code> esiste e ignora i PDB pur di completare l'aggiornamento. Su un cluster di produzione bancaria è l'ultima risorsa, non l'opzione di default: se un drain si blocca, la risposta giusta è capire quale PDB lo blocca e perché, non forzare l'eviction di un quorum.</p></div>
+<div class="cmd"><div class="cap">chi sta bloccando il drain</div><pre>kubectl get pdb -A | awk '$5==0'
+kubectl -n &lt;ns&gt; describe pdb &lt;nome&gt;</pre></div>
+
+<h4>Alternativa blue/green, quando il rollback conta più della semplicità</h4>
+<p>L'update in-place non ha marcia indietro: se la nuova AMI ha un problema, l'unico rimedio è un altro update. La strategia con rollback vero è creare un nuovo node group già alla versione di destinazione, spostarci i workload, e tenere il vecchio spento ma esistente per qualche giorno.</p>
+<div class="cmd"><div class="cap">1. nuovo gruppo, stessa forma, versione nuova</div><pre>eksctl create nodegroup --cluster a-4510-eks-mil-cluster-p-01 --region eu-south-1 \
+  --name a-4510-eks-mil-mainworkers-p-02 --node-type m6i.xlarge --nodes 3 --nodes-min 3 --nodes-max 6 \
+  --node-ami-family AmazonLinux2023 --version 1.33</pre></div>
+<div class="cmd"><div class="cap">2. svuotare il vecchio, gradualmente</div><pre>kubectl cordon -l eks.amazonaws.com/nodegroup=a-4510-eks-mil-mainworkers-p-01
+kubectl drain &lt;nodo&gt; --ignore-daemonsets --delete-emptydir-data --timeout=600s</pre></div>
+<div class="cmd"><div class="cap">3. eliminare il vecchio, solo dopo il periodo di osservazione</div><pre>aws eks delete-nodegroup --cluster-name a-4510-eks-mil-cluster-p-01 --region eu-south-1 \
+  --nodegroup-name a-4510-eks-mil-mainworkers-p-01</pre></div>
+
+<h3>Fase 4 — chiusura</h3>
+<div class="cmd"><div class="cap">nessun nodo rimasto indietro</div><pre>kubectl get nodes -o custom-columns='NODE:.metadata.name,KUBELET:.status.nodeInfo.kubeletVersion,OS:.status.nodeInfo.osImage,RUNTIME:.status.nodeInfo.containerRuntimeVersion'</pre></div>
+<div class="cmd"><div class="cap">niente di rotto in giro</div><pre>kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded
+kubectl get events -A --sort-by=.lastTimestamp | tail -30</pre></div>
+<div class="cmd"><div class="cap">insight ripulite e supporto tornato standard</div><pre>aws eks list-insights --cluster-name a-4510-eks-mil-cluster-p-01 --region eu-south-1 \
+  --query 'insights[?insightStatus.status!=`PASSING`]' --output table</pre></div>
+
+<div class="note"><p><strong>Politica di supporto, in una riga.</strong> 14 mesi di supporto standard per ogni minor, poi 12 mesi di extended a costo sestuplicato, poi upgrade automatico da parte di AWS. Con un rilascio ogni quattro mesi circa, una cadenza di upgrade trimestrale o semestrale è ciò che tiene il cluster dentro la finestra standard senza corse.</p></div>
+</section>
+
+<section id="triage">
+<h2><span class="num">14</span> Troubleshooting — dal sintomo alla causa</h2>
+
+<h3>Pod in ImagePullBackOff</h3>
+<table>
+<thead><tr><th style="width:200px">Messaggio</th><th>Causa</th><th>Verifica</th></tr></thead>
+<tbody>
+<tr><td><code>403 Forbidden</code> da ECR</td><td>Il node role non ha i permessi di pull, o manca la repository policy cross-account</td><td><code>aws iam list-attached-role-policies --role-name &lt;node-role&gt;</code></td></tr>
+<tr><td><code>no basic auth credentials</code></td><td>Registry esterno senza <code>imagePullSecret</code></td><td><code>kubectl get sa default -n &lt;ns&gt; -o yaml</code></td></tr>
+<tr><td>Timeout / <code>i/o timeout</code></td><td>Nodi in subnet private senza NAT o senza VPC endpoint per <code>ecr.dkr</code>, <code>ecr.api</code>, <code>s3</code></td><td><code>aws ec2 describe-vpc-endpoints --region eu-south-1</code></td></tr>
+<tr><td><code>manifest unknown</code></td><td>Tag inesistente, o architettura sbagliata (arm64 vs amd64)</td><td><code>aws ecr describe-images --repository-name &lt;repo&gt;</code></td></tr>
+</tbody>
+</table>
+<div class="cmd"><div class="cap">l'errore vero sta negli eventi, non nello stato del pod</div><pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt; | sed -n '/Events/,$p'</pre></div>
+
+<h3>Pod Pending</h3>
+<div class="cmd"><div class="cap">il motivo è sempre in fondo al describe</div><pre>kubectl describe pod &lt;pod&gt; -n &lt;ns&gt; | grep -A15 Events</pre></div>
+<table>
+<thead><tr><th style="width:250px">Messaggio dello scheduler</th><th>Significato su EKS</th></tr></thead>
+<tbody>
+<tr><td><code>Insufficient cpu / memory</code></td><td>Manca capacità: o scali il node group, o le requests sono sovradimensionate</td></tr>
+<tr><td><code>Too many pods</code></td><td>Hai colpito il tetto <em>max pods</em> dell'istanza, non un limite di CPU. Prefix delegation o istanze più grandi</td></tr>
+<tr><td><code>node(s) had untolerated taint</code></td><td>Taint del node group senza toleration nel workload</td></tr>
+<tr><td><code>had volume node affinity conflict</code></td><td>Il volume EBS è in una AZ e i nodi liberi in un'altra</td></tr>
+<tr><td><code>didn't find available persistent volumes</code></td><td>PVC senza StorageClass valida, o EBS CSI senza permessi IRSA</td></tr>
+</tbody>
+</table>
+
+<h3>Il pod non riesce a chiamare un'API AWS</h3>
+<p>Sequenza di verifica in tre comandi: prima le variabili iniettate, poi l'identità effettiva, poi il permesso.</p>
+<div class="cmd"><div class="cap">1 · il webhook ha iniettato le variabili?</div><pre>kubectl -n &lt;ns&gt; exec &lt;pod&gt; -- env | grep AWS_ROLE_ARN</pre></div>
+<div class="cmd"><div class="cap">2 · chi sono, per AWS?</div><pre>kubectl -n &lt;ns&gt; exec &lt;pod&gt; -- aws sts get-caller-identity</pre></div>
+<div class="cmd"><div class="cap">3 · il ruolo ha il permesso?</div><pre>aws iam simulate-principal-policy --policy-source-arn &lt;role-arn&gt; --action-names s3:GetObject --resource-arns arn:aws:s3:::bucket/key</pre></div>
+<p class="sub">Se al punto 1 non c'è nulla: annotation mancante sul SA, o pod creato prima dell'annotation (ricrealo). Se al punto 2 esce il node role: il pod non sta usando quel ServiceAccount. Se fallisce il 3: è un problema di permission policy, non di IRSA.</p>
+
+<h3>Nodo NotReady</h3>
+<div class="cmd"><div class="cap">condizioni del nodo e pressioni</div><pre>kubectl describe node &lt;nodo&gt; | grep -A12 Conditions</pre></div>
+<div class="cmd"><div class="cap">stato di salute che EKS conosce già del node group</div><pre>aws eks describe-nodegroup --cluster-name a-4510-eks-mil-cluster-p-01 --nodegroup-name &lt;ng&gt; --region eu-south-1 --query 'nodegroup.health'</pre></div>
+<div class="cmd"><div class="cap">sull'istanza, via SSM (niente SSH e niente bastion)</div><pre>aws ssm start-session --target i-0abc123 --region eu-south-1
+sudo journalctl -u kubelet -n 200 --no-pager
+sudo journalctl -u containerd -n 100 --no-pager</pre></div>
+<p class="sub">Cause ricorrenti: disco pieno (<code>DiskPressure</code> per immagini mai ripulite), kubelet che non raggiunge l'endpoint dell'API in private-only, oppure il nodo che non ha permessi per registrarsi — access entry mancante per il node role dopo un cambio di autenticazione.</p>
+
+<h3>Ingress ALB non nasce</h3>
+<div class="cmd"><div class="cap">i log del controller dicono sempre il perché</div><pre>kubectl -n kube-system logs deploy/aws-load-balancer-controller --tail=100 | grep -i error</pre></div>
+<ul>
+<li>Subnet senza tag <code>kubernetes.io/role/elb</code> o <code>internal-elb</code> → il controller non trova dove metterlo.</li>
+<li>Ruolo IRSA del controller senza i permessi <code>elasticloadbalancing:*</code> necessari.</li>
+<li>Meno di due subnet in AZ diverse: un ALB ne pretende almeno due.</li>
+<li><code>ingressClassName</code> non impostato e nessuna classe di default.</li>
+</ul>
+
+<h3>Kubectl non funziona</h3>
+<table>
+<thead><tr><th style="width:290px">Errore</th><th>Rimedio</th></tr></thead>
+<tbody>
+<tr><td><code>You must be logged in to the server (Unauthorized)</code></td><td>Il tuo ARN non è mappato: access entry o <code>aws-auth</code>. Verifica anche di stare usando il profilo AWS giusto.</td></tr>
+<tr><td><code>error: You must be logged in… (401)</code> dopo un cambio profilo</td><td><code>aws eks update-kubeconfig</code> di nuovo, il kubeconfig incapsula il profilo</td></tr>
+<tr><td><code>Unable to connect to the server: dial tcp i/o timeout</code></td><td>Endpoint privato e tu sei fuori dalla VPC, oppure il tuo IP non è nelle <code>publicAccessCidrs</code></td></tr>
+<tr><td><code>forbidden: User "…" cannot list resource</code></td><td>Autenticato ma senza RBAC: manca l'access policy o il binding</td></tr>
+</tbody>
+</table>
+</section>
+
+<section id="comandi">
+<h2><span class="num">15</span> Comandi rapidi</h2>
+<h4>Ricognizione di un cluster che non conosci</h4>
+<div class="cmd"><div class="cap">i cinque comandi con cui apri qualsiasi cluster EKS sconosciuto</div><pre>aws eks list-clusters --region eu-south-1 --output table
+aws eks describe-cluster --name &lt;cluster&gt; --region eu-south-1 --query 'cluster.{v:version,pf:platformVersion,status:status,ep:resourcesVpcConfig.endpointPublicAccess,role:roleArn}'
+aws eks list-nodegroups --cluster-name &lt;cluster&gt; --region eu-south-1 --output table
+aws eks list-addons --cluster-name &lt;cluster&gt; --region eu-south-1 --output table
+aws eks list-insights --cluster-name &lt;cluster&gt; --region eu-south-1 --query 'insights[?insightStatus.status!=`PASSING`]' --output table</pre></div>
+
+<table>
+<thead><tr><th style="width:46%">Comando</th><th>Cosa ti dice</th></tr></thead>
+<tbody>
+<tr><td><code>aws sts get-caller-identity</code></td><td>Con quale identità stai operando adesso</td></tr>
+<tr><td><code>aws eks update-kubeconfig --name … --region … --alias …</code></td><td>Aggiunge il contesto al kubeconfig</td></tr>
+<tr><td><code>aws eks describe-update --name … --update-id …</code></td><td>Stato di un upgrade in corso</td></tr>
+<tr><td><code>aws eks list-access-entries --cluster-name …</code></td><td>Chi può autenticarsi al cluster</td></tr>
+<tr><td><code>eksctl get cluster --region eu-south-1</code></td><td>Vista sintetica, più leggibile della CLI nativa</td></tr>
+<tr><td><code>eksctl get nodegroup --cluster … --region …</code></td><td>Node group con versioni e scaling in una tabella</td></tr>
+<tr><td><code>eksctl utils describe-stacks --cluster …</code></td><td>Stack CloudFormation dietro al cluster, se creato con eksctl</td></tr>
+<tr><td><code>kubectl get nodes -L eks.amazonaws.com/nodegroup</code></td><td>Nodi con il gruppo di appartenenza</td></tr>
+<tr><td><code>kubectl get events -A --sort-by=.lastTimestamp</code></td><td>Cronologia di ciò che è successo davvero</td></tr>
+<tr><td><code>kubectl top nodes</code></td><td>Consumo reale contro allocato (serve metrics-server)</td></tr>
+</tbody>
+</table>
+
+<h4>One-liner che tornano utili</h4>
+<div class="cmd"><div class="cap">pod non Running su tutto il cluster</div><pre>kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded</pre></div>
+<div class="cmd"><div class="cap">top 20 pod per restart</div><pre>kubectl get pods -A --sort-by=.status.containerStatuses[0].restartCount -o wide | tail -20</pre></div>
+<div class="cmd"><div class="cap">requests totali per nodo contro allocatable</div><pre>kubectl describe nodes | grep -A5 "Allocated resources"</pre></div>
+<div class="cmd"><div class="cap">tutti i ServiceAccount con annotation IRSA</div><pre>kubectl get sa -A -o json | jq -r '.items[] | select(.metadata.annotations."eks.amazonaws.com/role-arn") | "\(.metadata.namespace)\t\(.metadata.name)\t\(.metadata.annotations."eks.amazonaws.com/role-arn")"'</pre></div>
+<div class="cmd"><div class="cap">immagini in uso, per capacità di pull e inventario</div><pre>kubectl get pods -A -o jsonpath='{range .items[*]}{range .spec.containers[*]}{.image}{"\n"}{end}{end}' | sort | uniq -c | sort -rn</pre></div>
+</section>
+
+<section id="glossario">
+<h2><span class="num">16</span> Glossario</h2>
+<table>
+<thead><tr><th style="width:190px">Sigla</th><th>Per esteso, e cosa significa in pratica</th></tr></thead>
+<tbody>
+<tr><td><strong>EKS</strong></td><td>Elastic Kubernetes Service — il control plane Kubernetes gestito da AWS</td></tr>
+<tr><td><strong>ECR</strong></td><td>Elastic Container Registry — il registry immagini dell'account, con login temporaneo via IAM</td></tr>
+<tr><td><strong>VPC</strong></td><td>Virtual Private Cloud — la rete privata dove vivono nodi e pod</td></tr>
+<tr><td><strong>IAM</strong></td><td>Identity and Access Management — identità e permessi sulle API AWS</td></tr>
+<tr><td><strong>ARN</strong></td><td>Amazon Resource Name — l'indirizzo univoco di una risorsa</td></tr>
+<tr><td><strong>IRSA</strong></td><td>IAM Roles for Service Accounts — credenziali AWS per singolo pod via OIDC</td></tr>
+<tr><td><strong>STS</strong></td><td>Security Token Service — il servizio che emette le credenziali temporanee</td></tr>
+<tr><td><strong>OIDC</strong></td><td>OpenID Connect — il protocollo con cui AWS si fida dei token emessi dal cluster</td></tr>
+<tr><td><strong>SG</strong></td><td>Security Group — firewall stateful a livello di ENI</td></tr>
+<tr><td><strong>ENI</strong></td><td>Elastic Network Interface — la scheda di rete virtuale che porta gli IP dei pod</td></tr>
+<tr><td><strong>ASG</strong></td><td>Auto Scaling Group — il gruppo EC2 sotto ogni managed node group</td></tr>
+<tr><td><strong>AMI</strong></td><td>Amazon Machine Image — l'immagine del sistema operativo del nodo</td></tr>
+<tr><td><strong>IMDS</strong></td><td>Instance Metadata Service — l'endpoint <code>169.254.169.254</code> da cui un'istanza legge le proprie credenziali</td></tr>
+<tr><td><strong>ALB / NLB</strong></td><td>Application / Network Load Balancer — livello 7 e livello 4</td></tr>
+<tr><td><strong>CSI</strong></td><td>Container Storage Interface — lo standard con cui Kubernetes parla con lo storage</td></tr>
+<tr><td><strong>SSM</strong></td><td>Systems Manager — l'accesso a shell sulle istanze senza SSH né bastion</td></tr>
+</tbody>
+</table>
+</section>
+
+<section id="architettura">
+<h2><span class="num">17</span> Schema d'insieme</h2>
+<p class="lead">La mappa che hai già in mano, riletta con quello che c'è sopra. Serve come vista d'insieme: utente → ALB → pod, con IAM e IRSA a lato e il pull da ECR verso i worker.</p>
+<figure>
+  <img src="architettura-eks.png" alt="Architettura completa di un laboratorio EKS con VPC, subnet pubblica e privata, ALB, node group, ECR, IAM e IRSA">
+  <figcaption>Schema di riferimento — VPC 10.0.0.0/16, subnet pubblica per l'ALB, subnet privata per i nodi, IRSA per i pod, pull immagini da ECR.</figcaption>
+</figure>
+<h4>Due precisazioni rispetto allo schema</h4>
+<ul>
+<li>Il gruppo <em>SG-PODS</em> disegnato come un livello a sé esiste solo se abiliti i security group per pod (<code>ENABLE_POD_ENI</code>). Senza quella funzione, i pod ereditano i security group dell'ENI del nodo: il traffico verso ECR e verso i database esce con le regole di <em>SG-NODES</em>.</li>
+<li>Il pull delle immagini nello schema passa dal nodo, e questo è corretto: le credenziali usate sono quelle del <strong>node role</strong>, non di IRSA. IRSA vale per le chiamate che fa il <em>processo dentro il container</em>, non per il download dell'immagine — è una distinzione che risolve metà dei ticket "ho dato i permessi ma continua a non scaricare".</li>
+</ul>
+<div class="legend">
+  <span><i style="background:#ff9f43"></i>risorsa o servizio AWS</span>
+  <span><i style="background:#5fa8ff"></i>oggetto Kubernetes</span>
+  <span><i style="background:#b18cff"></i>identità e permessi</span>
+  <span><i style="background:#2fc8b8"></i>rete</span>
+</div>
+</section>
+
+<p class="sub" style="margin-top:60px;border-top:1px solid var(--line);padding-top:16px">Dati del cluster letti dalla console il 2 settembre 2026. Versioni, prezzi e finestre di supporto cambiano: prima di una finestra di upgrade riverifica con <code>aws eks describe-cluster-versions</code>.</p>
+
+</main>
+</div>
+
+<script>
+(function(){
+  // copia comandi
+  document.querySelectorAll('.cmd').forEach(function(box){
+    var b=document.createElement('button');
+    b.className='cp'; b.type='button'; b.textContent='copia';
+    b.addEventListener('click',function(){
+      var t=box.querySelector('pre').innerText;
+      navigator.clipboard.writeText(t).then(function(){
+        b.textContent='copiato'; b.classList.add('done');
+        setTimeout(function(){b.textContent='copia';b.classList.remove('done');},1400);
+      });
+    });
+    box.appendChild(b);
+  });
+
+  // filtro sezioni
+  var q=document.getElementById('q');
+  var secs=Array.prototype.slice.call(document.querySelectorAll('main section'));
+  var links=Array.prototype.slice.call(document.querySelectorAll('.rail a'));
+  q.addEventListener('input',function(){
+    var v=q.value.trim().toLowerCase();
+    if(!v){secs.forEach(function(s){s.classList.remove('hide')});links.forEach(function(a){a.style.display=''});return;}
+    secs.forEach(function(s){
+      var hit=s.innerText.toLowerCase().indexOf(v)>-1;
+      s.classList.toggle('hide',!hit);
+      links.forEach(function(a){ if(a.getAttribute('href')==='#'+s.id) a.style.display=hit?'':'none'; });
+    });
+  });
+
+  // evidenzia la sezione corrente
+  var obs=new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      if(!e.isIntersecting) return;
+      links.forEach(function(a){a.classList.toggle('on',a.getAttribute('href')==='#'+e.target.id);});
+    });
+  },{rootMargin:'-10% 0px -80% 0px'});
+  secs.forEach(function(s){obs.observe(s);});
+
+  // decoder ARN
+  var fields=['prefisso','partizione','servizio','regione','account','risorsa'];
+  var input=document.getElementById('arnin'), out=document.getElementById('arnout');
+  function decode(){
+    var p=input.value.trim().split(':');
+    var res=p.slice(5).join(':');
+    var vals=[p[0]||'',p[1]||'',p[2]||'',p[3]||'',p[4]||'',res||''];
+    out.innerHTML=fields.map(function(f,i){
+      var v=vals[i];
+      var cls=v?'vv':'vv empty';
+      var txt=v||'— vuoto (servizio globale)';
+      return '<div><span class="lb">'+f+'</span><span class="'+cls+'">'+txt.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span></div>';
+    }).join('');
+  }
+  input.addEventListener('input',decode); decode();
+})();
+</script>
+</body>
+</html>
