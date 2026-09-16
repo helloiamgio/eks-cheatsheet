@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ingress on EKS — field guide + kind lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b1014;
+  --panel:#111a21;
+  --panel-2:#0e161c;
+  --line:#1e2c36;
+  --line-soft:#182731;
+  --text:#d7e3ec;
+  --dim:#8ba0b0;
+  --faint:#5f7484;
+  --cyan:#2fd3d3;
+  --amber:#f0b429;
+  --red:#ff7070;
+  --green:#54d98c;
+  --violet:#9d8cff;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:'IBM Plex Sans',system-ui,-apple-system,Segoe UI,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:16px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:var(--sans);font-size:15px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:var(--cyan);text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+/* ---------- shell ---------- */
+.shell{display:grid;grid-template-columns:268px minmax(0,1fr);gap:0;max-width:1480px;margin:0 auto}
+.side{
+  position:sticky;top:0;height:100vh;overflow-y:auto;
+  border-right:1px solid var(--line);background:var(--panel-2);
+  padding:22px 16px 40px;
+}
+.side::-webkit-scrollbar{width:8px}
+.side::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+.brand{font-family:var(--mono);font-size:13px;color:var(--cyan);letter-spacing:.02em;margin-bottom:2px}
+.brand b{color:var(--text);font-weight:600}
+.brand-sub{font-size:12px;color:var(--faint);margin-bottom:16px;line-height:1.45}
+.filter{
+  width:100%;background:var(--bg);border:1px solid var(--line);border-radius:6px;
+  color:var(--text);font-family:var(--mono);font-size:12.5px;padding:8px 10px;margin-bottom:14px;
+}
+.filter::placeholder{color:var(--faint)}
+.nav a{
+  display:block;padding:6px 9px;border-radius:5px;color:var(--dim);
+  font-size:13px;line-height:1.35;border-left:2px solid transparent;
+}
+.nav a:hover{background:#16222b;color:var(--text);text-decoration:none}
+.nav a.on{background:#16222b;color:var(--cyan);border-left-color:var(--cyan)}
+.nav a .n{font-family:var(--mono);color:var(--faint);margin-right:7px;font-size:11.5px}
+.nav a.on .n{color:var(--cyan)}
+.nav .grp{font-size:11px;color:var(--faint);margin:16px 0 5px 9px;font-family:var(--mono)}
+
+/* ---------- main ---------- */
+main{padding:0 40px 120px;min-width:0}
+.hero{padding:60px 0 44px;border-bottom:1px solid var(--line)}
+.hero h1{
+  font-size:clamp(28px,4.2vw,44px);line-height:1.08;margin:0 0 14px;font-weight:600;
+  letter-spacing:-.02em;max-width:22ch;
+}
+.hero p{max-width:74ch;color:var(--dim);margin:0 0 10px}
+.hero .meta{font-family:var(--mono);font-size:12px;color:var(--faint);margin-top:22px}
+.verdict{
+  margin-top:26px;border:1px solid var(--line);border-left:3px solid var(--cyan);
+  background:var(--panel);border-radius:0 8px 8px 0;padding:16px 18px;max-width:82ch;
+}
+.verdict h3{margin:0 0 8px;font-size:14px;font-weight:600;color:var(--cyan);font-family:var(--mono)}
+.verdict p{margin:0;color:var(--dim);font-size:14px}
+
+section{padding:46px 0;border-bottom:1px solid var(--line-soft);scroll-margin-top:12px}
+section>h2{
+  font-size:24px;font-weight:600;margin:0 0 6px;letter-spacing:-.01em;
+  display:flex;align-items:baseline;gap:12px;
+}
+section>h2 .num{font-family:var(--mono);font-size:14px;color:var(--cyan);font-weight:500}
+section>.lede{color:var(--dim);max-width:78ch;margin:0 0 26px}
+h3{font-size:16.5px;font-weight:600;margin:32px 0 10px;color:var(--text)}
+h4{font-size:14px;font-weight:600;margin:22px 0 8px;color:var(--dim);font-family:var(--mono)}
+p{max-width:78ch}
+ul,ol{max-width:78ch;padding-left:20px}
+li{margin:5px 0}
+code{font-family:var(--mono);font-size:.885em;background:#16222b;border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:#a9e9e9}
+strong{color:#eef5fa;font-weight:600}
+
+/* ---------- code blocks ---------- */
+.cb{position:relative;margin:14px 0;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.cb .hd{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding:7px 12px;border-bottom:1px solid var(--line);background:#0f1920;
+}
+.cb .ttl{font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+.cb pre{margin:0;padding:13px 14px;overflow-x:auto;font-family:var(--mono);font-size:12.8px;line-height:1.62;color:#cfe4ee}
+.cb pre::-webkit-scrollbar{height:8px}
+.cb pre::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+.copy{
+  background:transparent;border:1px solid var(--line);color:var(--dim);
+  font-family:var(--mono);font-size:11px;padding:3px 9px;border-radius:4px;cursor:pointer;
+}
+.copy:hover{border-color:var(--cyan);color:var(--cyan)}
+.copy.ok{border-color:var(--green);color:var(--green)}
+.cb.warn{border-color:#5a4416}
+.cb.warn .hd{background:#1c1508}
+.cb.danger{border-color:#5a2020}
+.cb.danger .hd{background:#1c0d0d}
+
+/* ---------- callouts ---------- */
+.note{border-left:3px solid var(--cyan);background:#0f1a20;padding:12px 16px;margin:16px 0;border-radius:0 6px 6px 0;max-width:82ch}
+.note.amber{border-left-color:var(--amber);background:#1a1508}
+.note.red{border-left-color:var(--red);background:#1a0f0f}
+.note.green{border-left-color:var(--green);background:#0d1a14}
+.note p{margin:0}
+.note p+p{margin-top:8px}
+.note .lbl{font-family:var(--mono);font-size:11.5px;color:var(--cyan);display:block;margin-bottom:5px}
+.note.amber .lbl{color:var(--amber)}
+.note.red .lbl{color:var(--red)}
+.note.green .lbl{color:var(--green)}
+
+/* ---------- tables ---------- */
+.tw{overflow-x:auto;margin:16px 0;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13.2px;min-width:520px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+th{background:#0f1920;font-weight:600;color:var(--dim);font-size:12px;font-family:var(--mono)}
+tr:last-child td{border-bottom:none}
+td code{font-size:12px}
+.y{color:var(--green)}
+.n{color:var(--red)}
+.p{color:var(--amber)}
+
+/* ---------- split cards ---------- */
+.split{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:18px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 18px}
+.card h4{margin:0 0 8px;font-size:13.5px;color:var(--cyan);font-family:var(--mono)}
+.card.amber h4{color:var(--amber)}
+.card.violet h4{color:var(--violet)}
+.card ul{padding-left:17px;margin:0;font-size:13.5px;color:var(--dim)}
+.card p{font-size:13.5px;color:var(--dim);margin:0}
+
+/* ---------- diagrams ---------- */
+figure{margin:24px 0;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:20px 18px 12px}
+figure svg{width:100%;height:auto;display:block}
+figcaption{font-size:12px;color:var(--faint);margin-top:12px;font-family:var(--mono);text-align:center}
+
+/* ---------- misc ---------- */
+.kbd{font-family:var(--mono);font-size:11.5px;background:#16222b;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:1px 6px;color:var(--dim)}
+.tag{display:inline-block;font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--dim);margin-right:6px}
+.tag.k8s{color:var(--cyan);border-color:#1d4a4a}
+.tag.app{color:var(--violet);border-color:#332c63}
+.tag.cloud{color:var(--amber);border-color:#54401a}
+.steps{counter-reset:s;list-style:none;padding-left:0;max-width:80ch}
+.steps>li{counter-increment:s;position:relative;padding-left:34px;margin:18px 0}
+.steps>li::before{
+  content:counter(s);position:absolute;left:0;top:1px;width:23px;height:23px;
+  border:1px solid var(--cyan);border-radius:50%;color:var(--cyan);
+  font-family:var(--mono);font-size:11.5px;display:grid;place-items:center;
+}
+footer{padding:36px 0 0;color:var(--faint);font-size:12.5px;font-family:var(--mono)}
+.hidden{display:none!important}
+@media(max-width:1000px){
+  .shell{grid-template-columns:1fr}
+  .side{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line)}
+  main{padding:0 22px 80px}
+  .nav{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:2px}
+  .nav .grp{grid-column:1/-1}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<aside class="side">
+  <div class="brand"><b>Ingress</b> on EKS</div>
+  <div class="brand-sub">Field guide, real cases, reproducible kind lab</div>
+  <input class="filter" id="filter" type="search" placeholder="filter sections…" autocomplete="off">
+  <nav class="nav" id="nav"></nav>
+</aside>
+
+<main>
+
+<div class="hero">
+  <h1>Ingress on EKS is two different products wearing the same API</h1>
+  <p>Same <code>kind: Ingress</code>, same YAML shape, two implementations that behave nothing alike: one provisions a real AWS load balancer and terminates TLS outside the cluster, the other runs as a pod and terminates TLS from a Kubernetes Secret. Half the incidents on EKS ingress come from applying the mental model of one to the other.</p>
+  <p>This page covers both paths end to end, the split between what a Kubernetes platform team owns and what belongs to the cloud/network team, and a local lab on kind that reproduces everything reproducible without an AWS account.</p>
+  <div class="verdict">
+    <h3>Read this first</h3>
+    <p>Before writing a single annotation, run <code>kubectl get ingressclass</code>. That one command decides everything downstream: where the certificate lives, who provisions it, what breaks when it fails, and which team you escalate to.</p>
+  </div>
+  <div class="meta">no build step · no dependencies · single file · open it in a browser</div>
+</div>
+
+<!-- ===================================================== -->
+<section id="s1" data-title="The two worlds">
+<h2><span class="num">01</span> The two worlds</h2>
+<p class="lede">An Ingress object is a routing intent. The controller that watches it decides how that intent becomes traffic. On EKS there are two realistic implementations and they diverge at every layer that matters.</p>
+
+<figure>
+<svg viewBox="0 0 860 330" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, monospace">
+  <defs>
+    <marker id="ar" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#5f7484"/>
+    </marker>
+  </defs>
+  <!-- left: ALB -->
+  <text x="20" y="22" fill="#2fd3d3" font-size="13">AWS Load Balancer Controller</text>
+  <rect x="20" y="36" width="380" height="270" rx="8" fill="#0e161c" stroke="#1e2c36"/>
+  <rect x="44" y="60" width="150" height="38" rx="6" fill="#111a21" stroke="#2fd3d3"/>
+  <text x="119" y="83" fill="#d7e3ec" font-size="11" text-anchor="middle">client</text>
+  <rect x="44" y="124" width="332" height="44" rx="6" fill="#111a21" stroke="#f0b429"/>
+  <text x="210" y="142" fill="#f0b429" font-size="11" text-anchor="middle">ALB  (AWS managed, outside the cluster)</text>
+  <text x="210" y="158" fill="#8ba0b0" font-size="10" text-anchor="middle">TLS terminates here · cert = ACM ARN</text>
+  <rect x="44" y="196" width="332" height="40" rx="6" fill="#111a21" stroke="#1e2c36"/>
+  <text x="210" y="221" fill="#8ba0b0" font-size="10.5" text-anchor="middle">target group → pod IPs (target-type: ip)</text>
+  <rect x="44" y="258" width="150" height="34" rx="6" fill="#111a21" stroke="#54d98c"/>
+  <text x="119" y="279" fill="#54d98c" font-size="11" text-anchor="middle">pod :8080</text>
+  <rect x="226" y="258" width="150" height="34" rx="6" fill="#111a21" stroke="#54d98c"/>
+  <text x="301" y="279" fill="#54d98c" font-size="11" text-anchor="middle">pod :8080</text>
+  <line x1="119" y1="98" x2="119" y2="122" stroke="#5f7484" marker-end="url(#ar)"/>
+  <line x1="210" y1="168" x2="210" y2="194" stroke="#5f7484" marker-end="url(#ar)"/>
+  <line x1="150" y1="236" x2="125" y2="256" stroke="#5f7484" marker-end="url(#ar)"/>
+  <line x1="270" y1="236" x2="295" y2="256" stroke="#5f7484" marker-end="url(#ar)"/>
+  <text x="392" y="219" fill="#5f7484" font-size="9.5" text-anchor="end">no proxy pod in the path</text>
+
+  <!-- right: nginx -->
+  <text x="460" y="22" fill="#9d8cff" font-size="13">ingress-nginx</text>
+  <rect x="460" y="36" width="380" height="270" rx="8" fill="#0e161c" stroke="#1e2c36"/>
+  <rect x="484" y="60" width="150" height="38" rx="6" fill="#111a21" stroke="#2fd3d3"/>
+  <text x="559" y="83" fill="#d7e3ec" font-size="11" text-anchor="middle">client</text>
+  <rect x="484" y="118" width="332" height="36" rx="6" fill="#111a21" stroke="#1e2c36"/>
+  <text x="650" y="141" fill="#8ba0b0" font-size="10.5" text-anchor="middle">NLB  (layer 4, just forwards)</text>
+  <rect x="484" y="176" width="332" height="44" rx="6" fill="#111a21" stroke="#9d8cff"/>
+  <text x="650" y="194" fill="#9d8cff" font-size="11" text-anchor="middle">nginx controller pod (inside the cluster)</text>
+  <text x="650" y="210" fill="#8ba0b0" font-size="10" text-anchor="middle">TLS terminates here · cert = Secret</text>
+  <rect x="484" y="258" width="150" height="34" rx="6" fill="#111a21" stroke="#54d98c"/>
+  <text x="559" y="279" fill="#54d98c" font-size="11" text-anchor="middle">pod :8080</text>
+  <rect x="666" y="258" width="150" height="34" rx="6" fill="#111a21" stroke="#54d98c"/>
+  <text x="741" y="279" fill="#54d98c" font-size="11" text-anchor="middle">pod :8080</text>
+  <line x1="559" y1="98" x2="559" y2="116" stroke="#5f7484" marker-end="url(#ar)"/>
+  <line x1="650" y1="154" x2="650" y2="174" stroke="#5f7484" marker-end="url(#ar)"/>
+  <line x1="590" y1="220" x2="565" y2="256" stroke="#5f7484" marker-end="url(#ar)"/>
+  <line x1="710" y1="220" x2="735" y2="256" stroke="#5f7484" marker-end="url(#ar)"/>
+</svg>
+<figcaption>Where TLS terminates decides who owns the certificate — and that is the whole split</figcaption>
+</figure>
+
+<div class="tw">
+<table>
+<tr><th>&nbsp;</th><th>AWS Load Balancer Controller</th><th>ingress-nginx</th></tr>
+<tr><td>What the Ingress creates</td><td>A real ALB in your AWS account</td><td>An nginx <code>server</code> block in a pod</td></tr>
+<tr><td>Routing layer</td><td>Layer 7, by AWS</td><td>Layer 7, by nginx</td></tr>
+<tr><td>TLS terminates at</td><td>The ALB</td><td>The controller pod</td></tr>
+<tr><td>Certificate lives in</td><td>ACM (never leaves AWS)</td><td>A <code>kubernetes.io/tls</code> Secret</td></tr>
+<tr><td>Certificate renewal</td><td class="y">Automatic if ACM-issued</td><td class="p">Manual, or cert-manager</td></tr>
+<tr><td>Cost model</td><td>One ALB per Ingress (or per group)</td><td>One NLB for the whole cluster</td></tr>
+<tr><td>Blast radius of a bad config</td><td>ALB fails to provision, nothing serves</td><td>nginx rejects the config, existing routes keep serving</td></tr>
+<tr><td>Rewrite / advanced rules</td><td class="p">Limited (ALB actions)</td><td class="y">Rich (snippets, rewrites, auth)</td></tr>
+<tr><td>Needs AWS prerequisites</td><td class="n">Yes — heavily</td><td class="p">Only for the NLB</td></tr>
+<tr><td>Testable locally</td><td class="n">No</td><td class="y">Yes, identically</td></tr>
+</table>
+</div>
+
+<div class="note amber">
+<span class="lbl">The trap</span>
+<p>With ALB, a syntactically valid Ingress can sit in <code>ADDRESS: &lt;none&gt;</code> forever because of a missing subnet tag or a certificate in the wrong region. Nothing in the cluster is broken. The error is only visible in the controller logs, and the fix is not yours to apply.</p>
+</div>
+</section>
+
+<!-- ===================================================== -->
+<section id="s2" data-title="Identify what you have">
+<h2><span class="num">02</span> Identify what you have</h2>
+<p class="lede">First contact with an unknown EKS cluster. Five commands, in order.</p>
+
+<div class="cb"><div class="hd"><span class="ttl">which controllers are registered</span><button class="copy">copy</button></div><pre>kubectl get ingressclass -o wide</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">which controller pods are actually running</span><button class="copy">copy</button></div><pre>kubectl get pods -A | grep -Ei 'aws-load-balancer|ingress-nginx|traefik|istio-ingress|contour'</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">is there a default class (Ingress without ingressClassName lands here)</span><button class="copy">copy</button></div><pre>kubectl get ingressclass -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.controller}{"\t"}{.metadata.annotations.ingressclass\.kubernetes\.io/is-default-class}{"\n"}{end}'</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">what is already exposed, and how</span><button class="copy">copy</button></div><pre>kubectl get ingress -A -o custom-columns='NS:.metadata.namespace,NAME:.metadata.name,CLASS:.spec.ingressClassName,HOSTS:.spec.rules[*].host,ADDRESS:.status.loadBalancer.ingress[*].hostname'</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">every load balancer the cluster has asked AWS for</span><button class="copy">copy</button></div><pre>kubectl get svc -A --field-selector spec.type=LoadBalancer -o wide</pre></div>
+
+<h3>Reading the answer</h3>
+<div class="tw">
+<table>
+<tr><th><code>spec.controller</code> value</th><th>What it is</th><th>Go to</th></tr>
+<tr><td><code>ingress.k8s.aws/alb</code></td><td>AWS Load Balancer Controller</td><td>Sections 03–07</td></tr>
+<tr><td><code>k8s.io/ingress-nginx</code></td><td>ingress-nginx</td><td>Section 08</td></tr>
+<tr><td><code>traefik.io/ingress-controller</code></td><td>Traefik</td><td>nginx model applies</td></tr>
+<tr><td>no IngressClass at all</td><td>Nothing will ever reconcile your Ingress</td><td>Install a controller first</td></tr>
+</table>
+</div>
+
+<div class="note">
+<span class="lbl">Both can coexist</span>
+<p>A cluster commonly runs ALB for north-south traffic from outside the VPC and nginx for internal east-west routing. In that case <code>ingressClassName</code> is not optional — it is the only thing choosing the path, and omitting it silently sends the Ingress to whichever class is marked default.</p>
+</div>
+</section>
+
+<!-- ===================================================== -->
+<section id="s3" data-title="ALB controller: how it works">
+<h2><span class="num">03</span> ALB controller: how it works</h2>
+<p class="lede">The controller is a pod that watches Ingress and Service objects and calls the AWS ELBv2 API on your behalf. Everything it does, it does with an IAM identity attached to its ServiceAccount.</p>
+
+<h3>The reconcile chain</h3>
+<ol class="steps">
+<li>You create an <code>Ingress</code> with <code>ingressClassName: alb</code>.</li>
+<li>The controller resolves the backend <code>Service</code>, then its <code>EndpointSlice</code>, to get pod IPs.</li>
+<li>It discovers which subnets to use — either from the <code>subnets</code> annotation, or by scanning VPC subnets for a tag.</li>
+<li>It calls <code>CreateLoadBalancer</code>, <code>CreateTargetGroup</code>, <code>CreateListener</code>, <code>CreateRule</code> on ELBv2.</li>
+<li>It writes the ALB DNS name back into <code>status.loadBalancer.ingress[0].hostname</code>.</li>
+<li>It keeps target groups in sync as pods come and go.</li>
+</ol>
+
+<div class="note red">
+<span class="lbl">Step 3 is where most failures live</span>
+<p>Subnet discovery is silent when it works and cryptic when it does not. If fewer than two eligible subnets in different AZs are found, no ALB is created and the Ingress stays address-less.</p>
+</div>
+
+<h3>Verify the controller is healthy</h3>
+<div class="cb"><div class="hd"><span class="ttl">version and readiness</span><button class="copy">copy</button></div><pre>kubectl -n kube-system get deploy aws-load-balancer-controller -o wide</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">the IAM role it assumes (IRSA)</span><button class="copy">copy</button></div><pre>kubectl -n kube-system get sa aws-load-balancer-controller -o jsonpath='{.metadata.annotations.eks\.amazonaws\.com/role-arn}{"\n"}'</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">live logs — the only place AWS errors surface</span><button class="copy">copy</button></div><pre>kubectl -n kube-system logs deploy/aws-load-balancer-controller --tail=200 -f</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">the CRDs it owns</span><button class="copy">copy</button></div><pre>kubectl get crd | grep elbv2.k8s.aws</pre></div>
+
+<h3>Installing it (when it is missing)</h3>
+<div class="note amber">
+<span class="lbl">Prerequisite you cannot do yourself</span>
+<p>The IAM policy and the IRSA trust relationship are cloud-side objects. Ask for them before running the Helm install, or the controller will start and fail every reconcile with <code>AccessDenied</code>.</p>
+</div>
+
+<div class="cb"><div class="hd"><span class="ttl">helm repo</span><button class="copy">copy</button></div><pre>helm repo add eks https://aws.github.io/eks-charts && helm repo update</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">install — cluster name and VPC id must match reality</span><button class="copy">copy</button></div><pre>helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
+  -n kube-system \
+  --set clusterName=overx-eks-cluster \
+  --set serviceAccount.create=false \
+  --set serviceAccount.name=aws-load-balancer-controller \
+  --set region=eu-south-1 \
+  --set vpcId=vpc-xxxxxxxx</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">smoke test after install</span><button class="copy">copy</button></div><pre>kubectl -n kube-system rollout status deploy/aws-load-balancer-controller --timeout=120s</pre></div>
+</section>
+
+<!-- ===================================================== -->
+<section id="s4" data-title="AWS prerequisites (not yours)">
+<h2><span class="num">04</span> AWS prerequisites — the part you do not own</h2>
+<p class="lede">These are the objects the controller needs to exist in AWS before any Ingress can provision. On a team split between Kubernetes platform and cloud operations, none of them are on the Kubernetes side. Knowing them precisely is what lets you escalate with a specific ask instead of "it does not work".</p>
+
+<h3>Subnet tags</h3>
+<p>The controller finds subnets by tag. Two eligible subnets in two different AZs are the minimum.</p>
+<div class="tw">
+<table>
+<tr><th>Tag</th><th>Value</th><th>Applied to</th><th>Needed for</th></tr>
+<tr><td><code>kubernetes.io/role/internal-elb</code></td><td><code>1</code></td><td>private subnets</td><td><strong>internal</strong> load balancers</td></tr>
+<tr><td><code>kubernetes.io/role/elb</code></td><td><code>1</code></td><td>public subnets</td><td>internet-facing load balancers</td></tr>
+<tr><td><code>kubernetes.io/cluster/&lt;cluster&gt;</code></td><td><code>owned</code> or <code>shared</code></td><td>both</td><td>auto-discovery when subnets are shared</td></tr>
+</table>
+</div>
+
+<div class="cb"><div class="hd"><span class="ttl">bypass discovery entirely — pin the subnets on the Ingress</span><button class="copy">copy</button></div><pre>alb.ingress.kubernetes.io/subnets: subnet-0aaa1111,subnet-0bbb2222</pre></div>
+
+<div class="note green">
+<span class="lbl">Useful escalation shortcut</span>
+<p>Pinning subnets explicitly removes the dependency on tagging. If the cloud team is slow to tag, ask them only for the two private subnet ids and hardcode them in the chart values. It works, it is explicit, and it documents intent.</p>
+</div>
+
+<h3>The full cloud-side checklist</h3>
+<div class="tw">
+<table>
+<tr><th>Object</th><th>Why the Ingress needs it</th><th>Failure symptom</th></tr>
+<tr><td>IAM policy + IRSA trust</td><td>Controller calls ELBv2/EC2 APIs</td><td><code>AccessDenied</code> in controller logs</td></tr>
+<tr><td>Subnet tags (or explicit ids)</td><td>Choosing where the ALB lives</td><td><code>couldn't auto-discover subnets</code></td></tr>
+<tr><td>Security group rules</td><td>ALB → node/pod ports</td><td>Targets stuck <code>unhealthy</code></td></tr>
+<tr><td>ACM certificate</td><td>HTTPS listener</td><td><code>CertificateNotFound</code></td></tr>
+<tr><td>Route 53 private hosted zone</td><td>Hostname resolves for consumers</td><td><code>NXDOMAIN</code> from the client side</td></tr>
+<tr><td>VPN / Transit Gateway / peering</td><td>Consumers reach the internal ALB at all</td><td>DNS resolves, connection times out</td></tr>
+<tr><td>Resolver rules / DNS forwarding</td><td>On-prem clients resolve the private zone</td><td>Works from inside VPC, fails from on-prem</td></tr>
+</table>
+</div>
+
+<div class="note">
+<span class="lbl">How to phrase the handover</span>
+<p>"The Ingress manifest is ready and the controller is healthy. It will not provision until the two private subnets carry <code>kubernetes.io/role/internal-elb=1</code> and we have the ACM certificate ARN for the chosen hostname, in <code>eu-south-1</code>, in account <code>494321023441</code>. Everything after those two items is on us."</p>
+</div>
+</section>
+
+<!-- ===================================================== -->
+<section id="s5" data-title="ALB annotation reference">
+<h2><span class="num">05</span> ALB annotation reference</h2>
+<p class="lede">The Ingress spec carries almost no AWS semantics, so everything real is an annotation. These are the ones that come up in practice, grouped by what they decide.</p>
+
+<h3>Placement and exposure</h3>
+<div class="cb"><div class="hd"><span class="ttl">internal vs internet-facing — the single most consequential line</span><button class="copy">copy</button></div><pre>alb.ingress.kubernetes.io/scheme: internal          # private IPs only, reachable from VPC/VPN
+alb.ingress.kubernetes.io/scheme: internet-facing   # public IPs, reachable from the internet</pre></div>
+
+<div class="note red">
+<span class="lbl">Default is not safe</span>
+<p>Older controller versions default to <code>internet-facing</code> when the annotation is absent. Always set <code>scheme</code> explicitly on anything called "private". On a regulated client, an accidentally public ALB in front of an internal API is a reportable incident, not a config mistake.</p>
+</div>
+
+<h3>Targets</h3>
+<div class="cb"><div class="hd"><span class="ttl">target-type</span><button class="copy">copy</button></div><pre>alb.ingress.kubernetes.io/target-type: ip        # ALB → pod IP directly (VPC CNI). Preferred.
+alb.ingress.kubernetes.io/target-type: instance  # ALB → NodePort → kube-proxy → pod. Extra hop.</pre></div>
+
+<figure>
+<svg viewBox="0 0 800 210" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, monospace">
+  <defs><marker id="ar2" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#5f7484"/></marker></defs>
+  <text x="14" y="18" fill="#54d98c" font-size="12">target-type: ip</text>
+  <rect x="14" y="30" width="86" height="34" rx="5" fill="#111a21" stroke="#f0b429"/><text x="57" y="51" fill="#f0b429" font-size="10.5" text-anchor="middle">ALB</text>
+  <rect x="180" y="30" width="110" height="34" rx="5" fill="#111a21" stroke="#54d98c"/><text x="235" y="51" fill="#54d98c" font-size="10.5" text-anchor="middle">pod 10.0.3.44</text>
+  <line x1="100" y1="47" x2="176" y2="47" stroke="#5f7484" marker-end="url(#ar2)"/>
+  <text x="138" y="40" fill="#5f7484" font-size="9" text-anchor="middle">1 hop</text>
+  <text x="320" y="51" fill="#8ba0b0" font-size="10">real client IP preserved · clean health checks · pod-level draining</text>
+
+  <text x="14" y="116" fill="#f0b429" font-size="12">target-type: instance</text>
+  <rect x="14" y="128" width="86" height="34" rx="5" fill="#111a21" stroke="#f0b429"/><text x="57" y="149" fill="#f0b429" font-size="10.5" text-anchor="middle">ALB</text>
+  <rect x="150" y="128" width="120" height="34" rx="5" fill="#111a21" stroke="#1e2c36"/><text x="210" y="149" fill="#8ba0b0" font-size="10.5" text-anchor="middle">node :31234</text>
+  <rect x="320" y="128" width="110" height="34" rx="5" fill="#111a21" stroke="#1e2c36"/><text x="375" y="149" fill="#8ba0b0" font-size="10.5" text-anchor="middle">kube-proxy</text>
+  <rect x="480" y="128" width="110" height="34" rx="5" fill="#111a21" stroke="#54d98c"/><text x="535" y="149" fill="#54d98c" font-size="10.5" text-anchor="middle">pod (any node)</text>
+  <line x1="100" y1="145" x2="146" y2="145" stroke="#5f7484" marker-end="url(#ar2)"/>
+  <line x1="270" y1="145" x2="316" y2="145" stroke="#5f7484" marker-end="url(#ar2)"/>
+  <line x1="430" y1="145" x2="476" y2="145" stroke="#5f7484" marker-end="url(#ar2)"/>
+  <text x="620" y="143" fill="#8ba0b0" font-size="10">needs NodePort Service</text>
+  <text x="620" y="157" fill="#ff7070" font-size="10">source IP lost on the extra hop</text>
+</svg>
+<figcaption><code>ip</code> targets require the Service to exist but not to be NodePort — the ALB bypasses it entirely at runtime</figcaption>
+</figure>
+
+<h3>Listeners and TLS</h3>
+<div class="cb"><div class="hd"><span class="ttl">HTTPS only, with redirect from HTTP</span><button class="copy">copy</button></div><pre>alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+alb.ingress.kubernetes.io/ssl-redirect: '443'
+alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-south-1:494321023441:certificate/xxxx-xxxx
+alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">re-encrypt to the pod (backend speaks HTTPS)</span><button class="copy">copy</button></div><pre>alb.ingress.kubernetes.io/backend-protocol: HTTPS</pre></div>
+
+<h3>Health checks</h3>
+<div class="cb"><div class="hd"><span class="ttl">point the ALB at a real health endpoint, not /</span><button class="copy">copy</button></div><pre>alb.ingress.kubernetes.io/healthcheck-path: /actuator/health
+alb.ingress.kubernetes.io/healthcheck-port: traffic-port
+alb.ingress.kubernetes.io/healthcheck-interval-seconds: '15'
+alb.ingress.kubernetes.io/healthcheck-timeout-seconds: '5'
+alb.ingress.kubernetes.io/healthy-threshold-count: '2'
+alb.ingress.kubernetes.io/unhealthy-threshold-count: '3'
+alb.ingress.kubernetes.io/success-codes: '200'</pre></div>
+
+<div class="note amber">
+<span class="lbl">Health check is not the readiness probe</span>
+<p>The kubelet probe decides whether the pod joins the Service. The ALB health check decides whether the target receives traffic. They are independent: a pod can be <code>Ready</code> in Kubernetes and <code>unhealthy</code> in the target group at the same time, and that combination is the most common "everything looks fine but it 502s" case.</p>
+</div>
+
+<h3>Grouping, tags, logs</h3>
+<div class="cb"><div class="hd"><span class="ttl">share one ALB across Ingress objects</span><button class="copy">copy</button></div><pre>alb.ingress.kubernetes.io/group.name: overx-dev-internal
+alb.ingress.kubernetes.io/group.order: '10'</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">cost allocation and access logs</span><button class="copy">copy</button></div><pre>alb.ingress.kubernetes.io/tags: Environment=dev,Project=overx,Owner=infra-k8s
+alb.ingress.kubernetes.io/load-balancer-attributes: access_logs.s3.enabled=true,access_logs.s3.bucket=overx-alb-logs,idle_timeout.timeout_seconds=120</pre></div>
+
+<div class="cb warn"><div class="hd"><span class="ttl">restrict who can reach the ALB at the SG level</span><button class="copy">copy</button></div><pre>alb.ingress.kubernetes.io/inbound-cidrs: 10.0.0.0/8,172.16.0.0/12</pre></div>
+</section>
+
+<!-- ===================================================== -->
+<section id="s6" data-title="Certificates: ACM vs Secret">
+<h2><span class="num">06</span> Certificates: ACM vs Secret</h2>
+<p class="lede">This is the axis where the two controllers are genuinely incompatible, and where the ownership boundary is sharpest.</p>
+
+<figure>
+<svg viewBox="0 0 820 250" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, monospace">
+  <defs><marker id="ar3" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#5f7484"/></marker></defs>
+  <rect x="14" y="30" width="380" height="200" rx="8" fill="#0e161c" stroke="#1e2c36"/>
+  <text x="30" y="22" fill="#f0b429" font-size="12">ALB path</text>
+  <rect x="38" y="52" width="150" height="36" rx="5" fill="#111a21" stroke="#f0b429"/><text x="113" y="74" fill="#f0b429" font-size="10.5" text-anchor="middle">ACM certificate</text>
+  <text x="113" y="102" fill="#5f7484" font-size="9.5" text-anchor="middle">private key not exportable</text>
+  <rect x="222" y="52" width="150" height="36" rx="5" fill="#111a21" stroke="#1e2c36"/><text x="297" y="74" fill="#8ba0b0" font-size="10.5" text-anchor="middle">ALB listener :443</text>
+  <line x1="188" y1="70" x2="218" y2="70" stroke="#5f7484" marker-end="url(#ar3)"/>
+  <rect x="38" y="132" width="334" height="36" rx="5" fill="#111a21" stroke="#1e2c36"/>
+  <text x="205" y="154" fill="#8ba0b0" font-size="10.5" text-anchor="middle">Ingress annotation: certificate-arn</text>
+  <text x="205" y="192" fill="#54d98c" font-size="10" text-anchor="middle">renewal: automatic (ACM-issued + DNS validation)</text>
+  <text x="205" y="210" fill="#8ba0b0" font-size="10" text-anchor="middle">owner: cloud team</text>
+
+  <rect x="426" y="30" width="380" height="200" rx="8" fill="#0e161c" stroke="#1e2c36"/>
+  <text x="442" y="22" fill="#9d8cff" font-size="12">nginx path</text>
+  <rect x="450" y="52" width="150" height="36" rx="5" fill="#111a21" stroke="#9d8cff"/><text x="525" y="74" fill="#9d8cff" font-size="10.5" text-anchor="middle">tls Secret</text>
+  <text x="525" y="102" fill="#5f7484" font-size="9.5" text-anchor="middle">tls.crt + tls.key in namespace</text>
+  <rect x="634" y="52" width="150" height="36" rx="5" fill="#111a21" stroke="#1e2c36"/><text x="709" y="74" fill="#8ba0b0" font-size="10.5" text-anchor="middle">nginx server block</text>
+  <line x1="600" y1="70" x2="630" y2="70" stroke="#5f7484" marker-end="url(#ar3)"/>
+  <rect x="450" y="132" width="334" height="36" rx="5" fill="#111a21" stroke="#1e2c36"/>
+  <text x="617" y="154" fill="#8ba0b0" font-size="10.5" text-anchor="middle">Ingress field: spec.tls[].secretName</text>
+  <text x="617" y="192" fill="#f0b429" font-size="10" text-anchor="middle">renewal: manual, or cert-manager</text>
+  <text x="617" y="210" fill="#8ba0b0" font-size="10" text-anchor="middle">owner: platform or app team</text>
+</svg>
+<figcaption>With ALB you never hold the private key — that is a feature, and it changes your runbook</figcaption>
+</figure>
+
+<h3>ACM, in plain terms</h3>
+<ul>
+<li>AWS Certificate Manager is a managed CA and key store. It issues public certificates free, validated by a DNS record on the domain.</li>
+<li>You can also import a certificate from the client's own PKI. Imported certificates do <strong>not</strong> auto-renew.</li>
+<li>The private key is never exportable. An ACM certificate can only be attached to an ALB, NLB, CloudFront or API Gateway — never mounted into a pod.</li>
+<li>The certificate must live in the <strong>same region and same account</strong> as the load balancer, because the ARN encodes both.</li>
+</ul>
+
+<div class="cb"><div class="hd"><span class="ttl">anatomy of the ARN you will be handed</span><button class="copy">copy</button></div><pre>arn:aws:acm:eu-south-1:494321023441:certificate/12ab34cd-5678-90ef-ab12-34cd5678ef90
+    │   │   │      │              │            │
+    │   │   │      │              │            └─ certificate id
+    │   │   │      │              └─ resource type
+    │   │   │      └─ account id  ── must match the cluster account
+    │   │   └─ region             ── must match the ALB region
+    │   └─ service
+    └─ partition (aws · aws-cn · aws-us-gov)</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">let the controller find the cert by hostname instead of ARN</span><button class="copy">copy</button></div><pre>spec:
+  tls:
+  - hosts:
+    - api-private.dev.overx.internal</pre></div>
+<p>With <code>spec.tls</code> present and no <code>certificate-arn</code> annotation, the controller searches ACM for a certificate matching the host. Convenient, but it fails silently ambiguous when several certificates match — pin the ARN in production.</p>
+
+<h3>Secret-based TLS (nginx)</h3>
+<div class="cb"><div class="hd"><span class="ttl">create the Secret from files</span><button class="copy">copy</button></div><pre>kubectl -n overx-dev create secret tls api-private-tls --cert=tls.crt --key=tls.key</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">inspect what is actually in it before blaming nginx</span><button class="copy">copy</button></div><pre>kubectl -n overx-dev get secret api-private-tls -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -noout -subject -issuer -dates -ext subjectAltName</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">is cert-manager available for automatic renewal</span><button class="copy">copy</button></div><pre>kubectl get clusterissuer,issuer -A 2>/dev/null; kubectl get pods -n cert-manager</pre></div>
+
+<div class="note green">
+<span class="lbl">What to ask for, covering both cases</span>
+<p>"Confirm the hostname and whether HTTPS is required. If yes: is the certificate already in ACM (send the ARN) or does it need to be provided as a TLS Secret in the namespace (send crt + key, or point us at the issuing PKI)?" One question, both paths covered, no need to commit before inspecting the cluster.</p>
+</div>
+</section>
+
+<!-- ===================================================== -->
+<section id="s7" data-title="IngressGroup: one ALB, many teams">
+<h2><span class="num">07</span> IngressGroup: one ALB, many teams</h2>
+<p class="lede">Without grouping, every Ingress object provisions its own ALB. Ten microservices means ten ALBs, ten monthly bills, ten DNS records. <code>group.name</code> merges them into one.</p>
+
+<figure>
+<svg viewBox="0 0 780 200" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, monospace">
+  <defs><marker id="ar4" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#5f7484"/></marker></defs>
+  <rect x="14" y="20" width="200" height="40" rx="5" fill="#111a21" stroke="#9d8cff"/>
+  <text x="114" y="38" fill="#9d8cff" font-size="10.5" text-anchor="middle">Ingress: jmil-sinistri</text>
+  <text x="114" y="52" fill="#5f7484" font-size="9.5" text-anchor="middle">order 10 · /jmil/*</text>
+  <rect x="14" y="80" width="200" height="40" rx="5" fill="#111a21" stroke="#9d8cff"/>
+  <text x="114" y="98" fill="#9d8cff" font-size="10.5" text-anchor="middle">Ingress: session-temp</text>
+  <text x="114" y="112" fill="#5f7484" font-size="9.5" text-anchor="middle">order 20 · /session/*</text>
+  <rect x="14" y="140" width="200" height="40" rx="5" fill="#111a21" stroke="#9d8cff"/>
+  <text x="114" y="158" fill="#9d8cff" font-size="10.5" text-anchor="middle">Ingress: catch-all</text>
+  <text x="114" y="172" fill="#5f7484" font-size="9.5" text-anchor="middle">order 90 · /*</text>
+
+  <line x1="214" y1="40" x2="300" y2="92" stroke="#5f7484" marker-end="url(#ar4)"/>
+  <line x1="214" y1="100" x2="300" y2="100" stroke="#5f7484" marker-end="url(#ar4)"/>
+  <line x1="214" y1="160" x2="300" y2="108" stroke="#5f7484" marker-end="url(#ar4)"/>
+
+  <rect x="306" y="72" width="200" height="56" rx="6" fill="#111a21" stroke="#f0b429"/>
+  <text x="406" y="94" fill="#f0b429" font-size="11" text-anchor="middle">one ALB</text>
+  <text x="406" y="110" fill="#8ba0b0" font-size="9.5" text-anchor="middle">group.name: overx-dev-internal</text>
+
+  <rect x="560" y="72" width="200" height="56" rx="6" fill="#111a21" stroke="#54d98c"/>
+  <text x="660" y="94" fill="#54d98c" font-size="10.5" text-anchor="middle">rules evaluated</text>
+  <text x="660" y="110" fill="#8ba0b0" font-size="9.5" text-anchor="middle">lowest order first</text>
+  <line x1="506" y1="100" x2="556" y2="100" stroke="#5f7484" marker-end="url(#ar4)"/>
+</svg>
+<figcaption>Rules from every member Ingress merge into one listener, sorted by <code>group.order</code></figcaption>
+</figure>
+
+<div class="tw">
+<table>
+<tr><th>Behaviour</th><th>Consequence</th></tr>
+<tr><td>Ingresses can live in different namespaces</td><td>A namespace can inject rules into a shared ALB — treat <code>group.name</code> as a privileged value</td></tr>
+<tr><td><code>group.order</code> sorts rules globally (1–1000, default 0)</td><td>A greedy <code>/*</code> rule with a low order shadows everything</td></tr>
+<tr><td>Deleting the last member deletes the ALB</td><td>And with it the DNS target — coordinate deletions</td></tr>
+<tr><td>Annotations that configure the ALB itself must agree</td><td>Conflicting <code>scheme</code> or <code>certificate-arn</code> across members causes reconcile errors</td></tr>
+</table>
+</div>
+
+<div class="note red">
+<span class="lbl">Governance, not just config</span>
+<p>Because group membership is declared by an annotation on a namespaced object, any team that can create an Ingress can join a shared ALB and, with a low enough <code>group.order</code>, capture traffic meant for someone else. Restrict it with <code>IngressClassParams</code> or admission policy before opening a group to application teams.</p>
+</div>
+
+<div class="cb"><div class="hd"><span class="ttl">restrict a group to explicit namespaces</span><button class="copy">copy</button></div><pre>apiVersion: elbv2.k8s.aws/v1beta1
+kind: IngressClassParams
+metadata:
+  name: alb-internal
+spec:
+  scheme: internal
+  group:
+    name: overx-dev-internal
+  namespaceSelector:
+    matchLabels:
+      alb-group: overx-dev-internal</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">see everything currently attached to a group</span><button class="copy">copy</button></div><pre>kubectl get ingress -A -o json | jq -r '.items[] | select(.metadata.annotations["alb.ingress.kubernetes.io/group.name"]=="overx-dev-internal") | "\(.metadata.namespace)/\(.metadata.name)\torder=\(.metadata.annotations["alb.ingress.kubernetes.io/group.order"] // "0")"'</pre></div>
+</section>
+
+<!-- ===================================================== -->
+<section id="s8" data-title="ingress-nginx on EKS">
+<h2><span class="num">08</span> ingress-nginx on EKS</h2>
+<p class="lede">Standard Kubernetes ingress, with one AWS-specific decision: the Service in front of the controller is <code>type: LoadBalancer</code>, and its annotations decide whether that load balancer is internal.</p>
+
+<div class="cb"><div class="hd"><span class="ttl">install with an internal NLB</span><button class="copy">copy</button></div><pre>helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
+  -n ingress-nginx --create-namespace \
+  --set controller.ingressClassResource.name=nginx-internal \
+  --set controller.ingressClass=nginx-internal \
+  --set controller.service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-type"=external \
+  --set controller.service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-nlb-target-type"=ip \
+  --set controller.service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-scheme"=internal</pre></div>
+
+<div class="note amber">
+<span class="lbl">Two generations of annotations</span>
+<p>The legacy in-tree cloud provider used <code>service.beta.kubernetes.io/aws-load-balancer-internal: "true"</code>. The AWS Load Balancer Controller uses <code>aws-load-balancer-scheme: internal</code> together with <code>aws-load-balancer-type: external</code>. Mixing them produces a load balancer that ignores half your intent. Check which one is managing the Service before editing it.</p>
+</div>
+
+<div class="cb"><div class="hd"><span class="ttl">which one actually provisioned the Service</span><button class="copy">copy</button></div><pre>kubectl -n ingress-nginx describe svc ingress-nginx-controller | grep -iE 'events|Ensuring|Ensured|type|scheme'</pre></div>
+
+<h3>Ingress shape</h3>
+<div class="cb"><div class="hd"><span class="ttl">nginx Ingress with TLS from a Secret</span><button class="copy">copy</button></div><pre>apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: overx-private-api
+  namespace: overx-dev
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: HTTP
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/whitelist-source-range: 10.0.0.0/8
+spec:
+  ingressClassName: nginx-internal
+  tls:
+  - hosts: [api-private.dev.overx.internal]
+    secretName: api-private-tls
+  rules:
+  - host: api-private.dev.overx.internal
+    http:
+      paths:
+      - path: /jmil
+        pathType: Prefix
+        backend:
+          service:
+            name: ms-jmil-sinistri-api-dev
+            port: {number: 8080}
+      - path: /session
+        pathType: Prefix
+        backend:
+          service:
+            name: ms-session-private-api-dev
+            port: {number: 8080}</pre></div>
+
+<h3>Reading the generated config</h3>
+<div class="cb"><div class="hd"><span class="ttl">nginx is the ground truth, not the Ingress object</span><button class="copy">copy</button></div><pre>kubectl -n ingress-nginx exec deploy/ingress-nginx-controller -- cat /etc/nginx/nginx.conf | grep -A 30 'api-private.dev.overx.internal'</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">which backends nginx believes exist</span><button class="copy">copy</button></div><pre>kubectl -n ingress-nginx exec deploy/ingress-nginx-controller -- curl -s localhost:10246/configuration/backends | jq '.[] | {name, endpoints: [.endpoints[]?.address]}'</pre></div>
+
+<div class="note">
+<span class="lbl">Failure mode worth knowing</span>
+<p>nginx validates the whole generated config before reloading. A bad snippet in one Ingress makes the controller reject the reload and keep serving the <em>previous</em> config — so a broken deploy looks like "my change had no effect" rather than an outage. Check controller logs for <code>Unexpected failure reloading</code>.</p>
+</div>
+</section>
+
+<!-- ===================================================== -->
+<section id="s9" data-title="Real case: internal private APIs">
+<h2><span class="num">09</span> Real case: "expose the private APIs internally"</h2>
+<p class="lede">A verbatim request of this shape arrives roughly once per onboarding. It is underspecified in a way that matters, and the right first move is to split it before implementing anything.</p>
+
+<div class="note amber">
+<span class="lbl">The request</span>
+<p>"For helms <code>overx-dev/dev-overx-jmil-sinistri</code> and <code>overx-dev/dev-overx-session-temp</code>, add on both microservices an ingress exposing internally the private APIs (pods <code>ms-session-private-api-&lt;env&gt;</code> and <code>ms-jmil-sinistri-api-dev</code>)."</p>
+</div>
+
+<h3>What "internally" can mean</h3>
+<div class="tw">
+<table>
+<tr><th>Interpretation</th><th>Implementation</th><th>AWS prerequisites</th></tr>
+<tr><td>Reachable only from other pods in the cluster</td><td>A ClusterIP Service. <strong>No Ingress at all.</strong></td><td class="y">None</td></tr>
+<tr><td>Reachable from the VPC / corporate network</td><td>Ingress with <code>scheme: internal</code></td><td class="n">Subnets, SG, ACM, DNS, connectivity</td></tr>
+<tr><td>Reachable from another cluster or account</td><td>Internal ALB + PrivateLink or TGW</td><td class="n">All of the above, plus routing</td></tr>
+</table>
+</div>
+
+<p>These are three different projects. Answering "yes we will add the Ingress" without resolving this commits to the most expensive one by default.</p>
+
+<h3>Ownership split</h3>
+<div class="split">
+<div class="card"><h4>Infra Kubernetes</h4>
+<ul>
+<li>Identify controller and IngressClass on the cluster</li>
+<li>Supply the exact annotation block to the app team</li>
+<li>Validate Service selectors, ports, EndpointSlices</li>
+<li>Post-deploy: Ingress status, controller events, target health</li>
+<li>Troubleshoot reconcile failures</li>
+</ul></div>
+<div class="card app"><h4>Application team</h4>
+<ul>
+<li>Write the Ingress template in both Helm charts</li>
+<li>Value it per environment</li>
+<li>Choose host, paths, Service and port</li>
+<li>Define which APIs count as "private"</li>
+<li>Release through their pipeline</li>
+</ul></div>
+<div class="card amber"><h4>CloudOps</h4>
+<ul>
+<li>Private subnet tagging</li>
+<li>Security groups</li>
+<li>ACM certificate</li>
+<li>Route 53 private hosted zone record</li>
+<li>VPN / TGW / peering and DNS resolution</li>
+</ul></div>
+</div>
+
+<h3>The manifest, once the questions are answered</h3>
+<div class="cb"><div class="hd"><span class="ttl">one shared internal ALB for both services</span><button class="copy">copy</button></div><pre>apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-private-api
+  namespace: overx-dev
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/group.name: overx-dev-internal
+    alb.ingress.kubernetes.io/group.order: "{{ .Values.ingress.order }}"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/certificate-arn: {{ .Values.ingress.certificateArn }}
+    alb.ingress.kubernetes.io/healthcheck-path: {{ .Values.ingress.healthPath }}
+    alb.ingress.kubernetes.io/inbound-cidrs: 10.0.0.0/8
+    alb.ingress.kubernetes.io/tags: Project=overx,Environment=dev,Owner=infra-k8s
+spec:
+  ingressClassName: alb
+  rules:
+  - host: {{ .Values.ingress.host }}
+    http:
+      paths:
+      - path: {{ .Values.ingress.basePath }}
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ .Values.service.name }}
+            port:
+              number: {{ .Values.service.port }}</pre></div>
+
+<div class="note">
+<span class="lbl">Why <code>group.name</code> here</span>
+<p>Two charts, two Ingress objects. Without a group that is two ALBs, two DNS names and two certificates for what is conceptually one internal API surface. With a group it is one ALB, one hostname, two path prefixes — and one thing for CloudOps to provision instead of two.</p>
+</div>
+
+<h3>Questions to send back before estimating</h3>
+<ol>
+<li>Which of the three meanings of "internally" applies, and which specific APIs are in scope?</li>
+<li>Hostname, and is HTTPS required?</li>
+<li>Who are the consumers and from which network do they reach the cluster?</li>
+<li>One shared ALB with path prefixes, or one per microservice?</li>
+</ol>
+</section>
+
+<!-- ===================================================== -->
+<section id="s10" data-title="Troubleshooting">
+<h2><span class="num">10</span> Troubleshooting</h2>
+<p class="lede">Work outside-in: does the name resolve, does the connection open, does the load balancer answer, are the targets healthy, do the endpoints exist.</p>
+
+<h3>The five-layer walk</h3>
+<div class="cb"><div class="hd"><span class="ttl">1 — did the Ingress get an address at all</span><button class="copy">copy</button></div><pre>kubectl -n overx-dev get ingress -o wide</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">2 — what the controller thinks happened</span><button class="copy">copy</button></div><pre>kubectl -n overx-dev describe ingress overx-private-api</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">3 — the actual AWS error</span><button class="copy">copy</button></div><pre>kubectl -n kube-system logs deploy/aws-load-balancer-controller --tail=300 | grep -iE 'error|failed|denied|unable'</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">4 — does the Service resolve to real pods</span><button class="copy">copy</button></div><pre>kubectl -n overx-dev get endpointslice -l kubernetes.io/service-name=ms-jmil-sinistri-api-dev -o yaml | grep -E 'addresses|ready|port'</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">5 — does the pod actually answer, bypassing everything</span><button class="copy">copy</button></div><pre>kubectl -n overx-dev run curl-probe --rm -it --restart=Never --image=curlimages/curl:8.10.1 -- curl -sv http://ms-jmil-sinistri-api-dev:8080/health</pre></div>
+
+<h3>Symptom table</h3>
+<div class="tw">
+<table>
+<tr><th>Symptom</th><th>Most likely cause</th><th>Owner</th></tr>
+<tr><td><code>ADDRESS</code> stays empty, no events</td><td>No controller matches the IngressClass</td><td><span class="tag k8s">infra k8s</span></td></tr>
+<tr><td><code>couldn't auto-discover subnets</code></td><td>Missing <code>kubernetes.io/role/internal-elb</code> tag, or only one AZ tagged</td><td><span class="tag cloud">cloudops</span></td></tr>
+<tr><td><code>CertificateNotFound</code></td><td>Wrong ARN, wrong region, or wrong account</td><td><span class="tag cloud">cloudops</span></td></tr>
+<tr><td><code>AccessDenied</code> on ELBv2 calls</td><td>IRSA policy incomplete or trust broken</td><td><span class="tag cloud">cloudops</span></td></tr>
+<tr><td>ALB exists, targets <code>unhealthy</code></td><td>Health check path wrong, or SG blocks ALB → pod port</td><td><span class="tag k8s">infra k8s</span> <span class="tag cloud">cloudops</span></td></tr>
+<tr><td>502 / 503 through the ALB</td><td>No ready endpoints, or backend-protocol mismatch</td><td><span class="tag k8s">infra k8s</span></td></tr>
+<tr><td>504 after exactly 60s</td><td>ALB idle timeout below the app's response time</td><td><span class="tag k8s">infra k8s</span></td></tr>
+<tr><td>404 from the ALB itself</td><td>No rule matched — check <code>group.order</code> shadowing</td><td><span class="tag app">app</span></td></tr>
+<tr><td>Host resolves, connection times out</td><td>No network path from the client to the internal ALB</td><td><span class="tag cloud">cloudops</span></td></tr>
+<tr><td>Works in VPC, <code>NXDOMAIN</code> from on-prem</td><td>Private hosted zone not forwarded to on-prem resolvers</td><td><span class="tag cloud">cloudops</span></td></tr>
+<tr><td>nginx: change has no effect</td><td>Config reload rejected, old config still live</td><td><span class="tag k8s">infra k8s</span></td></tr>
+<tr><td>Intermittent 502 during deploys</td><td>No deregistration delay / missing preStop sleep</td><td><span class="tag app">app</span></td></tr>
+</table>
+</div>
+
+<h3>Two fixes worth knowing by heart</h3>
+<div class="cb"><div class="hd"><span class="ttl">long-running requests cut at 60s</span><button class="copy">copy</button></div><pre>alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=300</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">502s during rollouts — drain targets before the pod dies</span><button class="copy">copy</button></div><pre>alb.ingress.kubernetes.io/target-group-attributes: deregistration_delay.timeout_seconds=30</pre></div>
+</section>
+
+<!-- ===================================================== -->
+<section id="s11" data-title="kind lab: setup">
+<h2><span class="num">11</span> kind lab — setup</h2>
+<p class="lede">Everything below runs on a laptop with Docker and no AWS account. The nginx path is reproduced exactly; the ALB path is reproduced as far as it can be, with the boundary stated honestly in section 13.</p>
+
+<div class="cb"><div class="hd"><span class="ttl">prerequisites</span><button class="copy">copy</button></div><pre>kind version && kubectl version --client --short && helm version --short && docker version --format '{{.Server.Version}}'</pre></div>
+
+<h4>Cluster definition</h4>
+<div class="cb"><div class="hd"><span class="ttl">kind-ingress.yaml — host ports 80/443 mapped to the control-plane node</span><button class="copy">copy</button></div><pre>cat &gt; kind-ingress.yaml &lt;&lt;'EOF'
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: eks-ingress-lab
+nodes:
+- role: control-plane
+  kubeadmConfigPatches:
+  - |
+    kind: InitConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "ingress-ready=true"
+  extraPortMappings:
+  - containerPort: 80
+    hostPort: 80
+    protocol: TCP
+  - containerPort: 443
+    hostPort: 443
+    protocol: TCP
+- role: worker
+- role: worker
+EOF</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">create it</span><button class="copy">copy</button></div><pre>kind create cluster --config kind-ingress.yaml</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">confirm context and nodes</span><button class="copy">copy</button></div><pre>kubectl config use-context kind-eks-ingress-lab && kubectl get nodes -o wide</pre></div>
+
+<h4>Install ingress-nginx</h4>
+<div class="cb"><div class="hd"><span class="ttl">the kind-specific manifest binds the controller to the labelled node</span><button class="copy">copy</button></div><pre>kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.3/deploy/static/provider/kind/deploy.yaml</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">wait until it is actually serving</span><button class="copy">copy</button></div><pre>kubectl -n ingress-nginx wait --for=condition=ready pod -l app.kubernetes.io/component=controller --timeout=180s</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">the IngressClass you will reference</span><button class="copy">copy</button></div><pre>kubectl get ingressclass -o wide</pre></div>
+
+<h4>Two microservices named like the real ones</h4>
+<div class="cb"><div class="hd"><span class="ttl">whoami echoes headers, host and path — ideal for proving routing</span><button class="copy">copy</button></div><pre>cat &gt; apps.yaml &lt;&lt;'EOF'
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: overx-dev
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ms-jmil-sinistri-api-dev
+  namespace: overx-dev
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: ms-jmil-sinistri-api-dev}}
+  template:
+    metadata:
+      labels: {app: ms-jmil-sinistri-api-dev}
+    spec:
+      containers:
+      - name: whoami
+        image: traefik/whoami:v1.10
+        args: ["--port=8080","--name=jmil-sinistri"]
+        ports: [{containerPort: 8080}]
+        readinessProbe:
+          httpGet: {path: /health, port: 8080}
+          initialDelaySeconds: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ms-jmil-sinistri-api-dev
+  namespace: overx-dev
+spec:
+  selector: {app: ms-jmil-sinistri-api-dev}
+  ports: [{name: http, port: 8080, targetPort: 8080}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ms-session-private-api-dev
+  namespace: overx-dev
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: ms-session-private-api-dev}}
+  template:
+    metadata:
+      labels: {app: ms-session-private-api-dev}
+    spec:
+      containers:
+      - name: whoami
+        image: traefik/whoami:v1.10
+        args: ["--port=8080","--name=session-private"]
+        ports: [{containerPort: 8080}]
+        readinessProbe:
+          httpGet: {path: /health, port: 8080}
+          initialDelaySeconds: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ms-session-private-api-dev
+  namespace: overx-dev
+spec:
+  selector: {app: ms-session-private-api-dev}
+  ports: [{name: http, port: 8080, targetPort: 8080}]
+EOF</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">apply and verify endpoints exist before touching Ingress</span><button class="copy">copy</button></div><pre>kubectl apply -f apps.yaml && kubectl -n overx-dev get endpointslice</pre></div>
+
+<div class="note">
+<span class="lbl">Habit worth forming</span>
+<p>Always confirm EndpointSlices are populated before debugging an Ingress. An Ingress pointing at a Service with zero ready endpoints produces exactly the same 503 as a misconfigured route, and the second is much harder to diagnose.</p>
+</div>
+</section>
+
+<!-- ===================================================== -->
+<section id="s12" data-title="kind lab: the exercises">
+<h2><span class="num">12</span> kind lab — the exercises</h2>
+<p class="lede">Six scenarios, each one reproducing a failure or pattern you will meet on the real cluster.</p>
+
+<h3>Exercise 1 — path routing on one host</h3>
+<div class="cb"><div class="hd"><span class="ttl">the same shape as the overx request</span><button class="copy">copy</button></div><pre>cat &gt; ing-http.yaml &lt;&lt;'EOF'
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: overx-private-api
+  namespace: overx-dev
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: api-private.overx.lab
+    http:
+      paths:
+      - path: /jmil
+        pathType: Prefix
+        backend: {service: {name: ms-jmil-sinistri-api-dev, port: {number: 8080}}}
+      - path: /session
+        pathType: Prefix
+        backend: {service: {name: ms-session-private-api-dev, port: {number: 8080}}}
+EOF
+kubectl apply -f ing-http.yaml</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">test without touching /etc/hosts</span><button class="copy">copy</button></div><pre>curl -s --resolve api-private.overx.lab:80:127.0.0.1 http://api-private.overx.lab/jmil/ | grep -E 'Name|Hostname|RemoteAddr'</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">and the other path</span><button class="copy">copy</button></div><pre>curl -s --resolve api-private.overx.lab:80:127.0.0.1 http://api-private.overx.lab/session/ | grep -E 'Name|Hostname'</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">a path that matches nothing — this is what a 404 from the proxy looks like</span><button class="copy">copy</button></div><pre>curl -si --resolve api-private.overx.lab:80:127.0.0.1 http://api-private.overx.lab/nope | head -1</pre></div>
+
+<h3>Exercise 2 — see the generated config</h3>
+<div class="cb"><div class="hd"><span class="ttl">your Ingress, as nginx actually compiled it</span><button class="copy">copy</button></div><pre>kubectl -n ingress-nginx exec deploy/ingress-nginx-controller -- cat /etc/nginx/nginx.conf | grep -B2 -A 25 'api-private.overx.lab'</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">backends and their live endpoints</span><button class="copy">copy</button></div><pre>kubectl -n ingress-nginx exec deploy/ingress-nginx-controller -- curl -s localhost:10246/configuration/backends | jq -r '.[] | select(.name|test("overx")) | "\(.name)  \(.endpoints|length) endpoints"'</pre></div>
+
+<h3>Exercise 3 — TLS with a self-signed certificate</h3>
+<div class="cb"><div class="hd"><span class="ttl">generate cert and key with a SAN (browsers and curl require it)</span><button class="copy">copy</button></div><pre>openssl req -x509 -newkey rsa:2048 -nodes -days 365 \
+  -keyout tls.key -out tls.crt \
+  -subj "/CN=api-private.overx.lab/O=overx-lab" \
+  -addext "subjectAltName=DNS:api-private.overx.lab"</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">this is the exact command you will run on the real cluster too</span><button class="copy">copy</button></div><pre>kubectl -n overx-dev create secret tls api-private-tls --cert=tls.crt --key=tls.key</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">add the tls block and force redirect</span><button class="copy">copy</button></div><pre>kubectl -n overx-dev patch ingress overx-private-api --type=merge -p '{"metadata":{"annotations":{"nginx.ingress.kubernetes.io/ssl-redirect":"true"}},"spec":{"tls":[{"hosts":["api-private.overx.lab"],"secretName":"api-private-tls"}]}}'</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">verify TLS is served by your cert, not the default fake one</span><button class="copy">copy</button></div><pre>curl -sv --resolve api-private.overx.lab:443:127.0.0.1 --cacert tls.crt https://api-private.overx.lab/jmil/ 2>&1 | grep -E 'subject:|issuer:|SSL connection|HTTP/'</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">confirm the redirect works</span><button class="copy">copy</button></div><pre>curl -si --resolve api-private.overx.lab:80:127.0.0.1 http://api-private.overx.lab/jmil/ | head -3</pre></div>
+
+<div class="note green">
+<span class="lbl">What this teaches</span>
+<p>If you see <code>Kubernetes Ingress Controller Fake Certificate</code> in the output, nginx did not pick up your Secret — wrong namespace, wrong secret name, or host mismatch between <code>spec.tls[].hosts</code> and <code>spec.rules[].host</code>. That is the same diagnostic you will run in production.</p>
+</div>
+
+<h3>Exercise 4 — automatic certificates with cert-manager</h3>
+<p>This is the conceptual stand-in for ACM auto-renewal: a controller owns the certificate lifecycle instead of a human.</p>
+<div class="cb"><div class="hd"><span class="ttl">install</span><button class="copy">copy</button></div><pre>helm repo add jetstack https://charts.jetstack.io && helm repo update
+helm upgrade --install cert-manager jetstack/cert-manager -n cert-manager --create-namespace --set crds.enabled=true</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">a self-signed CA, then an issuer that signs from it</span><button class="copy">copy</button></div><pre>cat &gt; issuer.yaml &lt;&lt;'EOF'
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata: {name: selfsigned-root}
+spec: {selfSigned: {}}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: {name: overx-lab-ca, namespace: cert-manager}
+spec:
+  isCA: true
+  commonName: overx-lab-ca
+  secretName: overx-lab-ca
+  privateKey: {algorithm: ECDSA, size: 256}
+  issuerRef: {name: selfsigned-root, kind: ClusterIssuer, group: cert-manager.io}
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata: {name: overx-lab-issuer}
+spec:
+  ca: {secretName: overx-lab-ca}
+EOF
+kubectl apply -f issuer.yaml</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">one annotation and the Secret is created and renewed for you</span><button class="copy">copy</button></div><pre>kubectl -n overx-dev annotate ingress overx-private-api cert-manager.io/cluster-issuer=overx-lab-issuer --overwrite
+kubectl -n overx-dev patch ingress overx-private-api --type=merge -p '{"spec":{"tls":[{"hosts":["api-private.overx.lab"],"secretName":"api-private-cm-tls"}]}}'</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">watch it issue</span><button class="copy">copy</button></div><pre>kubectl -n overx-dev get certificate,certificaterequest,order 2>/dev/null; kubectl -n overx-dev describe certificate api-private-cm-tls | tail -20</pre></div>
+
+<h3>Exercise 5 — source restriction, the nginx equivalent of <code>inbound-cidrs</code></h3>
+<div class="cb"><div class="hd"><span class="ttl">allow only one CIDR</span><button class="copy">copy</button></div><pre>kubectl -n overx-dev annotate ingress overx-private-api nginx.ingress.kubernetes.io/whitelist-source-range=10.99.0.0/16 --overwrite</pre></div>
+
+<div class="cb danger"><div class="hd"><span class="ttl">now you should get 403 — this is the control working</span><button class="copy">copy</button></div><pre>curl -si --resolve api-private.overx.lab:443:127.0.0.1 --cacert tls.crt https://api-private.overx.lab/jmil/ | head -1</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">remove it again</span><button class="copy">copy</button></div><pre>kubectl -n overx-dev annotate ingress overx-private-api nginx.ingress.kubernetes.io/whitelist-source-range- </pre></div>
+
+<h3>Exercise 6 — break it on purpose</h3>
+<p>Each of these reproduces a real symptom from section 10. Run the failure, read the diagnostic, then undo.</p>
+
+<div class="cb warn"><div class="hd"><span class="ttl">wrong port on the backend → 503</span><button class="copy">copy</button></div><pre>kubectl -n overx-dev patch ingress overx-private-api --type=json -p '[{"op":"replace","path":"/spec/rules/0/http/paths/0/backend/service/port/number","value":9999}]'</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">the diagnostic that identifies it</span><button class="copy">copy</button></div><pre>kubectl -n overx-dev describe ingress overx-private-api | tail -20; kubectl -n ingress-nginx logs deploy/ingress-nginx-controller --tail=30 | grep -i 'service port'</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">undo</span><button class="copy">copy</button></div><pre>kubectl -n overx-dev patch ingress overx-private-api --type=json -p '[{"op":"replace","path":"/spec/rules/0/http/paths/0/backend/service/port/number","value":8080}]'</pre></div>
+
+<div class="cb warn"><div class="hd"><span class="ttl">no ready endpoints → 503 that looks identical but is not</span><button class="copy">copy</button></div><pre>kubectl -n overx-dev scale deploy ms-jmil-sinistri-api-dev --replicas=0</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">the command that tells the two 503s apart</span><button class="copy">copy</button></div><pre>kubectl -n overx-dev get endpointslice -l kubernetes.io/service-name=ms-jmil-sinistri-api-dev</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">undo</span><button class="copy">copy</button></div><pre>kubectl -n overx-dev scale deploy ms-jmil-sinistri-api-dev --replicas=2</pre></div>
+
+<div class="cb warn"><div class="hd"><span class="ttl">nonexistent IngressClass → nothing ever reconciles, no error anywhere</span><button class="copy">copy</button></div><pre>kubectl -n overx-dev patch ingress overx-private-api --type=merge -p '{"spec":{"ingressClassName":"alb"}}'</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">this silence is exactly what a missing controller looks like on EKS</span><button class="copy">copy</button></div><pre>kubectl -n overx-dev get ingress overx-private-api -o wide; kubectl -n overx-dev describe ingress overx-private-api | grep -A5 Events</pre></div>
+
+<div class="cb"><div class="hd"><span class="ttl">undo</span><button class="copy">copy</button></div><pre>kubectl -n overx-dev patch ingress overx-private-api --type=merge -p '{"spec":{"ingressClassName":"nginx"}}'</pre></div>
+
+<h3>Teardown</h3>
+<div class="cb danger"><div class="hd"><span class="ttl">destroys the whole lab cluster</span><button class="copy">copy</button></div><pre>kind delete cluster --name eks-ingress-lab</pre></div>
+</section>
+
+<!-- ===================================================== -->
+<section id="s13" data-title="What the lab cannot reproduce">
+<h2><span class="num">13</span> What the lab cannot reproduce</h2>
+<p class="lede">Being precise about the boundary is what makes the lab trustworthy. Everything in the left column transfers directly to EKS; everything in the right column has to be tested on a real cluster.</p>
+
+<div class="tw">
+<table>
+<tr><th>Reproducible on kind</th><th>Not reproducible</th></tr>
+<tr><td>Ingress object semantics, <code>pathType</code>, host matching</td><td>ALB provisioning and listener rules</td></tr>
+<tr><td>IngressClass selection and the silent-failure mode</td><td>Target group health check behaviour</td></tr>
+<tr><td>TLS from a Secret, SAN mismatches, fake-cert fallback</td><td>ACM issuance, ARN resolution, auto-renewal</td></tr>
+<tr><td>cert-manager issuance and renewal loop</td><td>Subnet discovery and AZ requirements</td></tr>
+<tr><td>Service → EndpointSlice → pod resolution</td><td>Security group reconciliation</td></tr>
+<tr><td>503 vs 404 vs 403 diagnosis</td><td>IRSA / IAM <code>AccessDenied</code> paths</td></tr>
+<tr><td>nginx config generation and reload rejection</td><td><code>group.name</code> merge and <code>group.order</code> precedence</td></tr>
+<tr><td>Source-range restriction logic</td><td>Real client-IP preservation across ALB</td></tr>
+<tr><td>Rollout behaviour, readiness gating</td><td>Deregistration delay and connection draining</td></tr>
+</table>
+</div>
+
+<h3>Going further, if it is worth the time</h3>
+<div class="split">
+<div class="card"><h4>EKS Distro images on kind</h4>
+<p>Run kind with the same Kubernetes build AWS ships. Closes the version-skew gap; changes nothing about load balancing.</p></div>
+<div class="card amber"><h4>LocalStack</h4>
+<p>Emulates ACM and ELBv2 well enough that the controller stops erroring. Useful to rehearse the reconcile loop and IAM shape, not to validate real traffic behaviour. ELBv2 coverage is partly Pro-tier.</p></div>
+<div class="card violet"><h4>MetalLB on kind</h4>
+<p>Gives <code>type: LoadBalancer</code> Services a real external IP, so the nginx-behind-a-LoadBalancer topology matches EKS instead of relying on host port mapping.</p></div>
+</div>
+
+<div class="note amber">
+<span class="lbl">Honest recommendation</span>
+<p>Do not try to emulate the ALB. Use the lab for everything that is Kubernetes — routing, TLS plumbing, endpoint resolution, failure diagnosis — and book a dev-account cluster for the AWS half. Chasing a faithful ALB emulation costs more than the dev account it replaces.</p>
+</div>
+</section>
+
+<!-- ===================================================== -->
+<section id="s14" data-title="Ownership matrix">
+<h2><span class="num">14</span> Ownership matrix</h2>
+<p class="lede">The reusable version of section 09, for any ingress request on any managed-Kubernetes client where the cloud layer sits with another team.</p>
+
+<div class="tw">
+<table>
+<tr><th>Activity</th><th>Infra K8s</th><th>Application</th><th>CloudOps</th></tr>
+<tr><td>Choose the controller and IngressClass</td><td class="y">owns</td><td>—</td><td>consulted</td></tr>
+<tr><td>Install and upgrade the controller</td><td class="y">owns</td><td>—</td><td>IAM prerequisites</td></tr>
+<tr><td>Define the annotation contract for app charts</td><td class="y">owns</td><td>consumes</td><td>—</td></tr>
+<tr><td>Write the Ingress template in the chart</td><td>reviews</td><td class="y">owns</td><td>—</td></tr>
+<tr><td>Choose host, paths, backend Service and port</td><td>reviews</td><td class="y">owns</td><td>—</td></tr>
+<tr><td>Define what "private API" means</td><td>—</td><td class="y">owns</td><td>—</td></tr>
+<tr><td>Subnet tagging, security groups</td><td>—</td><td>—</td><td class="y">owns</td></tr>
+<tr><td>ACM certificate issuance and renewal</td><td>consumes ARN</td><td>—</td><td class="y">owns</td></tr>
+<tr><td>TLS Secret in the namespace</td><td class="y">owns</td><td>consulted</td><td>supplies material</td></tr>
+<tr><td>DNS record for the hostname</td><td>—</td><td>—</td><td class="y">owns</td></tr>
+<tr><td>Network path from consumers</td><td>—</td><td>—</td><td class="y">owns</td></tr>
+<tr><td>Post-deploy cluster-side validation</td><td class="y">owns</td><td>—</td><td>—</td></tr>
+<tr><td>Troubleshooting reconcile failures</td><td class="y">owns</td><td>—</td><td>escalation target</td></tr>
+<tr><td>End-to-end functional test</td><td>supports</td><td class="y">owns</td><td>—</td></tr>
+</table>
+</div>
+
+<h3>Intake checklist</h3>
+<p>Nothing gets estimated until all six are answered.</p>
+<ol>
+<li>Exposure scope: in-cluster only, VPC/corporate network, or cross-account.</li>
+<li>Hostname, and whether HTTPS is required.</li>
+<li>Certificate source: ACM ARN, or material for a TLS Secret.</li>
+<li>Consumers, and the network they reach the cluster from.</li>
+<li>One shared load balancer with path prefixes, or one per service.</li>
+<li>Confirmation that the cloud team owns and has accepted the AWS prerequisites.</li>
+</ol>
+</section>
+
+<footer>
+  Ingress on EKS · companion to the EKS cheatsheet · single file, no build, no dependencies<br>
+  Verify controller-specific annotations against the version actually installed: <code>kubectl -n kube-system get deploy aws-load-balancer-controller -o jsonpath='{.spec.template.spec.containers[0].image}'</code>
+</footer>
+
+</main>
+</div>
+
+<script>
+(function(){
+  // ---- nav build ----
+  var secs = Array.prototype.slice.call(document.querySelectorAll('section[data-title]'));
+  var nav = document.getElementById('nav');
+  var groups = [
+    {label:'// concepts', from:'s1', to:'s2'},
+    {label:'// alb path', from:'s3', to:'s7'},
+    {label:'// nginx path', from:'s8', to:'s8'},
+    {label:'// practice', from:'s9', to:'s10'},
+    {label:'// lab', from:'s11', to:'s13'},
+    {label:'// process', from:'s14', to:'s14'}
+  ];
+  var idx = {};
+  secs.forEach(function(s,i){ idx[s.id] = i+1; });
+  groups.forEach(function(g){
+    var h = document.createElement('div'); h.className='grp'; h.textContent=g.label; nav.appendChild(h);
+    var started=false;
+    secs.forEach(function(s){
+      if(s.id===g.from) started=true;
+      if(started){
+        var a=document.createElement('a');
+        a.href='#'+s.id; a.dataset.target=s.id;
+        a.innerHTML='<span class="n">'+String(idx[s.id]).padStart(2,'0')+'</span>'+s.dataset.title;
+        nav.appendChild(a);
+      }
+      if(s.id===g.to) started=false;
+    });
+  });
+
+  // ---- copy buttons ----
+  document.querySelectorAll('.cb').forEach(function(cb){
+    var btn = cb.querySelector('.copy');
+    if(!btn) return;
+    btn.addEventListener('click', function(){
+      var txt = cb.querySelector('pre').innerText;
+      navigator.clipboard.writeText(txt).then(function(){
+        btn.textContent='copied'; btn.classList.add('ok');
+        setTimeout(function(){ btn.textContent='copy'; btn.classList.remove('ok'); },1200);
+      }).catch(function(){ btn.textContent='failed'; setTimeout(function(){btn.textContent='copy';},1200); });
+    });
+  });
+
+  // ---- scrollspy ----
+  var links = Array.prototype.slice.call(nav.querySelectorAll('a'));
+  var obs = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        links.forEach(function(l){ l.classList.toggle('on', l.dataset.target===e.target.id); });
+      }
+    });
+  }, {rootMargin:'-10% 0px -80% 0px', threshold:0});
+  secs.forEach(function(s){ obs.observe(s); });
+
+  // ---- section filter ----
+  var f = document.getElementById('filter');
+  f.addEventListener('input', function(){
+    var q = f.value.trim().toLowerCase();
+    secs.forEach(function(s){
+      var hit = !q || s.dataset.title.toLowerCase().indexOf(q)>-1 || s.innerText.toLowerCase().indexOf(q)>-1;
+      s.classList.toggle('hidden', !hit);
+      links.forEach(function(l){ if(l.dataset.target===s.id) l.classList.toggle('hidden', !hit); });
+    });
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key==='/' && document.activeElement!==f){ e.preventDefault(); f.focus(); }
+    if(e.key==='Escape' && document.activeElement===f){ f.value=''; f.dispatchEvent(new Event('input')); f.blur(); }
+  });
+})();
+</script>
+</body>
+</html>
