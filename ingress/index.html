@@ -46,6 +46,8 @@ a:hover{text-decoration:underline}
 }
 .side::-webkit-scrollbar{width:8px}
 .side::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+.back{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--dim);margin-bottom:14px;padding:3px 8px;border:1px solid var(--line);border-radius:5px}
+.back:hover{color:var(--cyan);border-color:var(--cyan);text-decoration:none}
 .brand{font-family:var(--mono);font-size:13px;color:var(--cyan);letter-spacing:.02em;margin-bottom:2px}
 .brand b{color:var(--text);font-weight:600}
 .brand-sub{font-size:12px;color:var(--faint);margin-bottom:16px;line-height:1.45}
@@ -181,6 +183,7 @@ footer{padding:36px 0 0;color:var(--faint);font-size:12.5px;font-family:var(--mo
 <div class="shell">
 
 <aside class="side">
+  <a class="back" href="/">&larr; EKS cheatsheet</a>
   <div class="brand"><b>Ingress</b> on EKS</div>
   <div class="brand-sub">Field guide, real cases, reproducible kind lab</div>
   <input class="filter" id="filter" type="search" placeholder="filter sections…" autocomplete="off">
