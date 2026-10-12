@@ -83,7 +83,7 @@ section.mod{padding-top:56px}
 .figure svg{display:block;width:100%;min-width:600px;height:auto}
 .figure svg text{font-family:var(--f-body)}
 .figcap{font-size:14px;color:var(--muted);margin-top:8px}
-pre{background:var(--code-bg);color:var(--code-ink);font-family:var(--f-mono);font-size:13px;line-height:1.6;padding:14px 16px;border-radius:10px;overflow-x:auto;margin:10px 0 16px;position:relative}
+pre{background:var(--code-bg);color:var(--code-ink);font-family:var(--f-mono);font-size:13px;line-height:1.6;padding:14px 78px 14px 16px;border-radius:10px;overflow-x:auto;margin:10px 0 16px;position:relative}
 pre code{background:none;padding:0;color:inherit;font-size:inherit;word-break:normal;border-radius:0}
 pre .c{color:var(--code-muted)} pre .h{color:var(--code-hi)}
 .copy{position:absolute;top:8px;right:8px;font-family:var(--f-body);font-size:12px;background:#2B3046;color:#E2E5F3;border:0;border-radius:6px;padding:3px 9px;cursor:pointer;opacity:.85}
@@ -229,8 +229,8 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--k8s);outline-of
 .gl dd{margin:0;color:var(--muted)}
 @media (max-width:560px){.gl div{grid-template-columns:minmax(0,1fr);gap:2px}}
 .hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 6px}
-.path-map{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:20px 0 6px}
-@media (max-width:760px){.path-map{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.path-map{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:20px 0 6px}
+@media (max-width:620px){.path-map{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .path-map a{display:block;text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-width:0}
 .path-map a:hover,.path-map a:focus-visible{border-color:var(--bridge);outline:none}
 .path-map .lv{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--bridge)}
@@ -244,9 +244,9 @@ footer{margin-top:72px;font-size:14px;color:var(--muted);border-top:1px solid va
 <div class="wrap">
 <nav class="rail" id="rail" aria-label="Indice del corso">
   <a class="brand" href="#top">Da zero a EKS</a>
-  <div class="sub">Corso interattivo · 19 moduli</div>
+  <div class="sub">Corso interattivo · 20 moduli</div>
   <div class="prog" aria-hidden="true"><i id="progbar"></i></div>
-  <div class="progtxt" id="progtxt">0 / 19 moduli completati</div>
+  <div class="progtxt" id="progtxt">0 / 20 moduli completati</div>
   <button type="button" class="railtoggle" id="railtoggle" aria-expanded="false">Mostra i moduli</button>
   <div class="lv">
     <h5>Livello 1 · Cloud</h5>
@@ -283,6 +283,10 @@ footer{margin-top:72px;font-size:14px;color:var(--muted);border-top:1px solid va
       <li><a class="m" href="#insieme"><span class="k">18</span><span>Tutto insieme</span><span class="d">✓</span></a></li>
       <li><a class="m" href="#triage"><span class="k">19</span><span>Troubleshooting</span><span class="d">✓</span></a></li>
     </ol>
+    <h5>Livello 6 · Pratica</h5>
+    <ol>
+      <li><a class="m" href="#lab"><span class="k">20</span><span>Laboratorio MiniStack</span><span class="d">✓</span></a></li>
+    </ol>
     <h5>Verifica</h5>
     <ol>
       <li><a class="m" href="#esame"><span class="k">EX</span><span>Esame finale</span><span class="d"></span></a></li>
@@ -298,7 +302,7 @@ footer{margin-top:72px;font-size:14px;color:var(--muted);border-top:1px solid va
   <h1>Da zero a <span class="k">EKS</span>: il cloud, <span class="a">AWS</span> e Kubernetes gestito, un mattone alla volta</h1>
   <p class="lead">Un percorso per chi deve operare cluster Amazon EKS senza aver mai lavorato su AWS. Si parte da cos'è il cloud e da come funziona una rete IP, si passa per i servizi AWS che EKS usa davvero, e si arriva al cluster. Ogni modulo ha laboratori interattivi e un quiz di verifica.</p>
   <div class="hero-meta">
-    <span class="tag nt">19 moduli</span><span class="tag nt">17 laboratori</span><span class="tag nt">~6 ore</span><span class="tag nt">esame finale</span>
+    <span class="tag nt">20 moduli</span><span class="tag nt">17 laboratori interattivi</span><span class="tag nt">9 esercizi su MiniStack</span><span class="tag nt">~8 ore</span><span class="tag nt">esame finale</span>
   </div>
   <div class="path-map">
     <a href="#cloud"><span class="lv">Livello 1</span><b>Cloud</b><span class="s">Modelli di servizio, responsabilità</span></a>
@@ -306,6 +310,7 @@ footer{margin-top:72px;font-size:14px;color:var(--muted);border-top:1px solid va
     <a href="#ip"><span class="lv">Livello 3</span><b>Rete</b><span class="s">CIDR, routing, VPC, SG</span></a>
     <a href="#ec2"><span class="lv">Livello 4</span><b>EC2 · EBS · IAM</b><span class="s">Calcolo, dischi, identità</span></a>
     <a href="#eks"><span class="lv">Livello 5</span><b>EKS</b><span class="s">Il cluster, pezzo per pezzo</span></a>
+    <a href="#lab"><span class="lv">Livello 6</span><b>Pratica</b><span class="s">Comandi veri su MiniStack</span></a>
   </div>
   <div class="callout ocp"><strong>Come leggere il corso.</strong> I livelli sono in ordine: ogni modulo usa solo concetti già spiegati prima. Chi conosce già Kubernetes o OpenShift troverà dei box come questo, che collegano il concetto AWS a quello che già conosce. I progressi (moduli completati, punteggi) restano salvati in questo browser.</div>
 </header>
@@ -863,6 +868,7 @@ aws ec2 describe-nat-gateways --filter Name=vpc-id,Values=vpc-0abc \
 aws ec2 describe-vpc-endpoints --filters Name=vpc-id,Values=vpc-0abc \
   --query 'VpcEndpoints[].{servizio:ServiceName,tipo:VpcEndpointType,stato:State}' --output table</code></pre>
 
+  <p class="hint" style="margin-top:22px"><b>Mettilo in pratica:</b> <a href="#lab-e2">esercizio 2: costruisci la rete del cluster</a> nel laboratorio MiniStack.</p>
   <div class="check" data-quiz="vpc"></div>
   <div class="donebar"><button type="button" class="donebtn" data-done="vpc" aria-pressed="false">Segna come completato</button></div>
 </section>
@@ -959,6 +965,7 @@ aws ec2 describe-network-interfaces --filters Name=addresses.private-ip-address,
 <span class="c"># aggiungere una regola che cita un altro SG</span>
 aws ec2 authorize-security-group-ingress --group-id sg-db --protocol tcp --port 5432 --source-group sg-nodes</code></pre>
 
+  <p class="hint" style="margin-top:22px"><b>Mettilo in pratica:</b> <a href="#lab-e3">esercizio 3: Security Group</a> nel laboratorio MiniStack.</p>
   <div class="check" data-quiz="sg"></div>
   <div class="donebar"><button type="button" class="donebtn" data-done="sg" aria-pressed="false">Segna come completato</button></div>
 </section>
@@ -1099,6 +1106,7 @@ aws ec2 create-volume --snapshot-id snap-0abc --availability-zone eu-south-1c --
 <span class="c"># cifratura di default nella region</span>
 aws ec2 get-ebs-encryption-by-default</code></pre>
 
+  <p class="hint" style="margin-top:22px"><b>Mettilo in pratica:</b> <a href="#lab-e4">esercizio 4: volumi, snapshot e AZ</a> nel laboratorio MiniStack.</p>
   <div class="check" data-quiz="ebs"></div>
   <div class="donebar"><button type="button" class="donebtn" data-done="ebs" aria-pressed="false">Segna come completato</button></div>
 </section>
@@ -1247,6 +1255,7 @@ aws iam simulate-principal-policy \
 <span class="c"># decodificare un messaggio di AccessDenied codificato</span>
 aws sts decode-authorization-message --encoded-message '&lt;messaggio&gt;' --query DecodedMessage --output text | jq</code></pre>
 
+  <p class="hint" style="margin-top:22px"><b>Mettilo in pratica:</b> <a href="#lab-e5">esercizio 5: IAM che dice davvero di no</a> nel laboratorio MiniStack.</p>
   <div class="check" data-quiz="iam"></div>
   <div class="donebar"><button type="button" class="donebtn" data-done="iam" aria-pressed="false">Segna come completato</button></div>
 </section>
@@ -1514,6 +1523,7 @@ aws eks associate-access-policy --cluster-name my-eks --principal-arn arn:aws:ia
 <span class="c"># verificare i permessi effettivi</span>
 kubectl auth can-i --list -n shop</code></pre>
 
+  <p class="hint" style="margin-top:22px"><b>Mettilo in pratica:</b> <a href="#lab-e6">esercizio 6: cluster EKS e access entry</a> nel laboratorio MiniStack.</p>
   <div class="check" data-quiz="accessi"></div>
   <div class="donebar"><button type="button" class="donebtn" data-done="accessi" aria-pressed="false">Segna come completato</button></div>
 </section>
@@ -1598,6 +1608,7 @@ kubectl -n velero rollout restart deploy/velero
 kubectl -n velero exec deploy/velero -- env | grep ^AWS_</code></pre>
   <div class="callout"><strong>Diagnosi in un colpo d'occhio.</strong> Nelle variabili del pod: <code>AWS_ROLE_ARN</code> → IRSA; <code>AWS_CONTAINER_CREDENTIALS_FULL_URI</code> → Pod Identity; nessuna delle due → il pod usa il role del nodo (se raggiunge l'IMDS) o nessuna identità.</div>
 
+  <p class="hint" style="margin-top:22px"><b>Mettilo in pratica:</b> <a href="#lab-e8">esercizio 8: Pod Identity e IRSA</a> nel laboratorio MiniStack.</p>
   <div class="check" data-quiz="irsa"></div>
   <div class="donebar"><button type="button" class="donebtn" data-done="irsa" aria-pressed="false">Segna come completato</button></div>
 </section>
@@ -1736,6 +1747,7 @@ aws elbv2 describe-target-health --target-group-arn &lt;arn-del-target-group&gt;
 aws ec2 create-tags --resources subnet-0pub1 subnet-0pub2 subnet-0pub3 --tags Key=kubernetes.io/role/elb,Value=1</code></pre>
   <div class="callout ocp"><strong>Per chi viene da OpenShift.</strong> Una Route con terminazione edge corrisponde a un Ingress ALB con certificato ACM. Il router HAProxy condiviso corrisponde a un IngressGroup, o a un ingress controller (NGINX, Istio) dietro un NLB. Il VIP F5 davanti ai router diventa il load balancer AWS creato dal controller.</div>
 
+  <p class="hint" style="margin-top:22px"><b>Mettilo in pratica:</b> <a href="#lab-e9">esercizio 9: un ALB con target IP</a> nel laboratorio MiniStack.</p>
   <div class="check" data-quiz="esposizione"></div>
   <div class="donebar"><button type="button" class="donebtn" data-done="esposizione" aria-pressed="false">Segna come completato</button></div>
 </section>
@@ -1891,6 +1903,231 @@ kubectl run t --rm -it --image=public.ecr.aws/docker/library/busybox:stable -- n
   <div class="donebar"><button type="button" class="donebtn" data-done="triage" aria-pressed="false">Segna come completato</button></div>
 </section>
 
+
+<!-- ================= LIVELLO 6 ================= -->
+<div class="level" id="l6">
+  <div class="eyebrow">Livello 6</div>
+  <h2>Pratica sul tuo PC, senza account AWS</h2>
+  <p>Tutto quello che hai studiato, rifatto con i comandi veri contro un emulatore locale di AWS. Nessun costo, nessun rischio, e un cluster Kubernetes vero dietro all'API di EKS.</p>
+</div>
+
+<section class="mod" id="lab" data-mod="lab">
+  <div class="modhead"><span class="num">Modulo 20</span><span class="tag br">Lab</span><span class="time">2–3 ore</span></div>
+  <h2>Laboratorio con MiniStack</h2>
+  <div class="goals"><b>Alla fine saprai</b><ul>
+    <li>costruire da CLI una VPC completa, Security Group, volumi EBS, role e policy IAM;</li>
+    <li>creare un cluster EKS, entrarci con kubectl tramite IAM e governare l'accesso con le access entry;</li>
+    <li>riconoscere cosa un emulatore riproduce fedelmente e cosa no, e perché la differenza conta.</li></ul></div>
+
+  <p><a href="https://ministack.org/" target="_blank" rel="noopener">MiniStack</a> è un emulatore open source (licenza MIT) di oltre 60 servizi AWS, in un singolo processo o container. Le API rispondono come quelle vere, quindi la AWS CLI, Terraform ed eksctl funzionano puntando a <code>http://localhost:4566</code>. Due caratteristiche lo rendono adatto a questo corso, e le abbiamo verificate:</p>
+  <ul class="plain">
+    <li>con la variabile <code>AUTH=true</code> <b>valuta davvero le policy IAM</b>: Allow, Deny esplicito e deny implicito producono <code>AccessDenied</code> come su AWS;</li>
+    <li><code>eks create-cluster</code> avvia un <b>Kubernetes vero (k3s)</b> in un container Docker: <code>aws eks update-kubeconfig</code> e <code>kubectl</code> funzionano, con autenticazione tramite token IAM e access entry applicate.</li>
+  </ul>
+  <div class="callout warn"><strong>Un emulatore non è AWS.</strong> Molte risorse sono solo metadati: i Security Group non filtrano traffico, le route table non instradano nulla, alcuni controlli di validazione mancano. Ogni esercizio indica cosa è fedele e cosa no; la tabella in fondo al modulo riassume le differenze. Le abbiamo verificate con MiniStack 1.5.26 (ottobre 2026): versioni successive possono colmarne alcune.</div>
+
+  <h3>Preparazione</h3>
+  <p>Servono Python 3, la AWS CLI e <code>kubectl</code>. Per la parte EKS serve anche un motore Docker attivo (Docker Desktop, Colima, OrbStack o Podman con socket compatibile), perché MiniStack avvia il cluster k3s come container.</p>
+  <ol class="plain">
+    <li><b>Installa MiniStack</b> in un ambiente Python dedicato. Il pacchetto <code>docker</code> serve a MiniStack per avviare i cluster EKS: senza, i cluster restano finti (solo metadati).
+<pre class="labcmd"><code>python3 -m venv ~/ministack</code></pre>
+<pre class="labcmd"><code>~/ministack/bin/pip install ministack docker</code></pre></li>
+    <li><b>Avvialo con la valutazione IAM attiva</b>, in un terminale dedicato che lasci aperto:
+<pre><code>AUTH=true ~/ministack/bin/ministack</code></pre>
+    In alternativa con Docker (immagine <code>ministackorg/ministack</code>, socket montato per poter avviare k3s):
+<pre><code>docker run -d --name ministack -p 4566:4566 -e AUTH=true -v /var/run/docker.sock:/var/run/docker.sock ministackorg/ministack</code></pre></li>
+    <li><b>Prepara il terminale di lavoro.</b> Credenziali fittizie, region di Milano, un kubeconfig separato per non toccare quello dei cluster veri, e un alias che punta all'emulatore:
+<pre class="labcmd"><code>unset AWS_PROFILE AWS_SESSION_TOKEN</code></pre>
+<pre class="labcmd"><code>export AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=eu-south-1 AWS_PAGER=""</code></pre>
+<pre class="labcmd"><code>export KUBECONFIG=$HOME/.kube/ministack</code></pre>
+<pre class="labcmd"><code>alias awsl='aws --endpoint-url http://localhost:4566'</code></pre>
+<pre class="labcmd"><code>mkdir -p ~/ministack-lab && cd ~/ministack-lab</code></pre></li>
+    <li><b>Verifica</b>: l'account dell'emulatore è <code>000000000000</code>.
+<pre class="labcmd"><code>awsl sts get-caller-identity</code></pre></li>
+  </ol>
+  <div class="callout ocp"><strong>Perché un terminale separato.</strong> Se nella stessa shell hai profili o token dei clienti, un comando senza <code>--endpoint-url</code> andrebbe su AWS vero. Usa un terminale dedicato al lab, con le variabili qui sopra e il kubeconfig separato.</div>
+
+  <div class="lab">
+    <div class="lab-h"><span class="tag">Progressi</span><b>Esercizi del laboratorio</b></div>
+    <p class="hint">Spunta gli esercizi man mano che li completi. Lo stato resta salvato in questo browser.</p>
+    <div id="labList"></div>
+  </div>
+
+  <h3 id="lab-e1">Esercizio 1 · Account, region e tag <span class="tag nt">moduli 03–04</span></h3>
+  <p>Guarda le AZ della region con nome e Zone ID, poi crea la VPC del laboratorio con un tag.</p>
+<pre class="labcmd"><code>awsl ec2 describe-availability-zones --query 'AvailabilityZones[].{nome:ZoneName,id:ZoneId}' --output table</code></pre>
+<pre class="labcmd"><code>VPC=$(awsl ec2 create-vpc --cidr-block 10.0.0.0/16 --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=lab-vpc}]' --query Vpc.VpcId --output text); echo $VPC</code></pre>
+<pre class="labcmd"><code>awsl ec2 describe-vpcs --vpc-ids $VPC --query 'Vpcs[0].{cidr:CidrBlock,tag:Tags}'</code></pre>
+  <p><b>Da notare</b>: l'ID della VPC ha il formato reale (<code>vpc-…</code>). Prova a scrivere a mano l'ARN della VPC e controllalo con il decoder del modulo 04.</p>
+
+  <h3 id="lab-e2">Esercizio 2 · Costruisci la rete del cluster <span class="tag nt">moduli 05–07</span></h3>
+  <p>Tre subnet pubbliche /24 per i load balancer e tre private /19 per nodi e pod, una coppia per AZ, con i tag che userà il controller dei load balancer.</p>
+<pre class="labcmd"><code>for i in 0 1 2; do az=$(echo a b c | cut -d' ' -f$((i+1))); awsl ec2 create-subnet --vpc-id $VPC --cidr-block 10.0.$i.0/24 --availability-zone eu-south-1$az --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=pub-1$az},{Key=kubernetes.io/role/elb,Value=1}]" --query Subnet.SubnetId --output text; done</code></pre>
+<pre class="labcmd"><code>for i in 0 1 2; do az=$(echo a b c | cut -d' ' -f$((i+1))); awsl ec2 create-subnet --vpc-id $VPC --cidr-block 10.0.$((64+i*32)).0/19 --availability-zone eu-south-1$az --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=priv-1$az},{Key=kubernetes.io/role/internal-elb,Value=1}]" --query Subnet.SubnetId --output text; done</code></pre>
+<pre class="labcmd"><code>awsl ec2 describe-subnets --filters Name=vpc-id,Values=$VPC --query 'Subnets[].{nome:Tags[?Key==`Name`]|[0].Value,az:AvailabilityZone,cidr:CidrBlock}' --output table</code></pre>
+  <p>Ora la parte che rende una subnet pubblica o privata: Internet Gateway, route table pubblica, NAT Gateway in una subnet pubblica, route table privata verso il NAT.</p>
+<pre class="labcmd"><code>PUB_A=$(awsl ec2 describe-subnets --filters Name=tag:Name,Values=pub-1a --query 'Subnets[0].SubnetId' --output text); PRIV_A=$(awsl ec2 describe-subnets --filters Name=tag:Name,Values=priv-1a --query 'Subnets[0].SubnetId' --output text); echo $PUB_A $PRIV_A</code></pre>
+<pre class="labcmd"><code>IGW=$(awsl ec2 create-internet-gateway --query InternetGateway.InternetGatewayId --output text) && awsl ec2 attach-internet-gateway --internet-gateway-id $IGW --vpc-id $VPC && echo $IGW</code></pre>
+<pre class="labcmd"><code>RT_PUB=$(awsl ec2 create-route-table --vpc-id $VPC --query RouteTable.RouteTableId --output text) && awsl ec2 create-route --route-table-id $RT_PUB --destination-cidr-block 0.0.0.0/0 --gateway-id $IGW</code></pre>
+<pre class="labcmd"><code>awsl ec2 associate-route-table --route-table-id $RT_PUB --subnet-id $PUB_A</code></pre>
+<pre class="labcmd"><code>EIP=$(awsl ec2 allocate-address --domain vpc --query AllocationId --output text) && NAT=$(awsl ec2 create-nat-gateway --subnet-id $PUB_A --allocation-id $EIP --query NatGateway.NatGatewayId --output text) && echo $NAT</code></pre>
+<pre class="labcmd"><code>RT_PRIV=$(awsl ec2 create-route-table --vpc-id $VPC --query RouteTable.RouteTableId --output text) && awsl ec2 create-route --route-table-id $RT_PRIV --destination-cidr-block 0.0.0.0/0 --nat-gateway-id $NAT</code></pre>
+<pre class="labcmd"><code>awsl ec2 associate-route-table --route-table-id $RT_PRIV --subnet-id $PRIV_A</code></pre>
+<pre class="labcmd"><code>awsl ec2 describe-route-tables --filters Name=association.subnet-id,Values=$PRIV_A --query 'RouteTables[].Routes[]' --output table</code></pre>
+  <p>Infine i VPC endpoint per un cluster privato: gateway per S3, interface per ECR.</p>
+<pre class="labcmd"><code>awsl ec2 create-vpc-endpoint --vpc-id $VPC --service-name com.amazonaws.eu-south-1.s3 --route-table-ids $RT_PRIV --query VpcEndpoint.VpcEndpointId --output text</code></pre>
+<pre class="labcmd"><code>awsl ec2 create-vpc-endpoint --vpc-id $VPC --vpc-endpoint-type Interface --service-name com.amazonaws.eu-south-1.ecr.api --subnet-ids $PRIV_A --query VpcEndpoint.VpcEndpointId --output text</code></pre>
+  <div class="callout"><strong>Prova a sbagliare.</strong> Crea una subnet che si sovrappone a <code>priv-1a</code>:
+<pre class="labcmd"><code>awsl ec2 create-subnet --vpc-id $VPC --cidr-block 10.0.64.0/24 --availability-zone eu-south-1a --query Subnet.SubnetId --output text</code></pre>
+  MiniStack la accetta. AWS vero risponde <code>InvalidSubnet.Conflict</code>, perché 10.0.64.0/24 è dentro 10.0.64.0/19. Anche <code>AvailableIpAddressCount</code> vale sempre 251, a prescindere dalla dimensione: il calcolo corretto lo fai con il lab del modulo 05. Per completare l'esercizio, ripeti associazioni e NAT anche per 1b e 1c.</div>
+
+  <h3 id="lab-e3">Esercizio 3 · Security Group che citano altri Security Group <span class="tag nt">modulo 08</span></h3>
+<pre class="labcmd"><code>SG_NODES=$(awsl ec2 create-security-group --group-name lab-nodes --description "nodi EKS" --vpc-id $VPC --query GroupId --output text); echo $SG_NODES</code></pre>
+<pre class="labcmd"><code>SG_DB=$(awsl ec2 create-security-group --group-name lab-db --description "database" --vpc-id $VPC --query GroupId --output text); echo $SG_DB</code></pre>
+<pre class="labcmd"><code>awsl ec2 authorize-security-group-ingress --group-id $SG_DB --protocol tcp --port 5432 --source-group $SG_NODES --query 'SecurityGroupRules[0].SecurityGroupRuleId' --output text</code></pre>
+<pre class="labcmd"><code>awsl ec2 describe-security-group-rules --filters Name=group-id,Values=$SG_DB --query 'SecurityGroupRules[].{uscita:IsEgress,proto:IpProtocol,porta:FromPort,cidr:CidrIpv4,sg:ReferencedGroupInfo.GroupId}' --output table</code></pre>
+  <p><b>Da notare</b>: un SG nuovo ha zero regole in ingresso e una regola in uscita verso 0.0.0.0/0, esattamente come su AWS. Il traffico però non viene filtrato: per "provare" se un flusso passa usa il packet tracer del modulo 08.</p>
+
+  <h3 id="lab-e4">Esercizio 4 · Volumi EBS, snapshot e AZ <span class="tag nt">moduli 09–10</span></h3>
+<pre class="labcmd"><code>VOL=$(awsl ec2 create-volume --availability-zone eu-south-1b --size 20 --volume-type gp3 --encrypted --query VolumeId --output text); echo $VOL</code></pre>
+<pre class="labcmd"><code>awsl ec2 describe-volumes --volume-ids $VOL --query 'Volumes[0].{az:AvailabilityZone,tipo:VolumeType,iops:Iops,cifrato:Encrypted,stato:State}'</code></pre>
+<pre class="labcmd"><code>SNAP=$(awsl ec2 create-snapshot --volume-id $VOL --description "pre-migrazione" --query SnapshotId --output text); echo $SNAP</code></pre>
+<pre class="labcmd"><code>awsl ec2 create-volume --snapshot-id $SNAP --availability-zone eu-south-1c --volume-type gp3 --query '{vol:VolumeId,az:AvailabilityZone}'</code></pre>
+<pre class="labcmd"><code>awsl ec2 modify-volume --volume-id $VOL --size 50 --iops 6000 --query 'VolumeModification.{stato:ModificationState,gib:TargetSize,iops:TargetIops}'</code></pre>
+  <p>Hai appena "spostato" un disco da 1b a 1c passando dallo snapshot, che è regionale. Ora un'istanza in 1a:</p>
+<pre class="labcmd"><code>INST=$(awsl ec2 run-instances --image-id ami-0abcdef1234567890 --instance-type m6i.large --subnet-id $PRIV_A --metadata-options HttpTokens=required,HttpPutResponseHopLimit=1 --query 'Instances[0].InstanceId' --output text); echo $INST</code></pre>
+<pre class="labcmd"><code>awsl ec2 describe-instances --instance-ids $INST --query 'Reservations[0].Instances[0].{tipo:InstanceType,az:Placement.AvailabilityZone,ip:PrivateIpAddress,stato:State.Name}'</code></pre>
+  <div class="callout"><strong>Prova a sbagliare.</strong> Collega all'istanza in 1a il volume che sta in 1b:
+<pre class="labcmd"><code>awsl ec2 attach-volume --volume-id $VOL --instance-id $INST --device /dev/xvdf --query State</code></pre>
+  MiniStack risponde <code>attached</code>. AWS vero rifiuta con <code>InvalidVolume.ZoneMismatch</code>: è lo stesso vincolo che lascia un pod in Pending con <code>volume node affinity conflict</code> (modulo 16). MiniStack inoltre non conserva le opzioni dei metadati dell'istanza (IMDSv2, hop limit).</div>
+
+  <h3 id="lab-e5">Esercizio 5 · IAM che dice davvero di no <span class="tag nt">modulo 11</span></h3>
+  <p>Un role per il backup, assumibile dall'account, con il permesso di leggere e scrivere su un solo bucket.</p>
+<pre class="labcmd"><code>cat > trust-account.json <<'EOF'
+{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":"arn:aws:iam::000000000000:root"},"Action":"sts:AssumeRole"}]}
+EOF</code></pre>
+<pre class="labcmd"><code>cat > policy-backup.json <<'EOF'
+{"Version":"2012-10-17","Statement":[
+ {"Effect":"Allow","Action":["s3:GetObject","s3:PutObject"],"Resource":"arn:aws:s3:::lab-backup/*"},
+ {"Effect":"Allow","Action":"s3:ListBucket","Resource":"arn:aws:s3:::lab-backup"}]}
+EOF</code></pre>
+<pre class="labcmd"><code>awsl iam create-role --role-name lab-backup --assume-role-policy-document file://trust-account.json --query Role.Arn --output text</code></pre>
+<pre class="labcmd"><code>awsl iam put-role-policy --role-name lab-backup --policy-name s3-backup --policy-document file://policy-backup.json</code></pre>
+<pre class="labcmd"><code>awsl s3 mb s3://lab-backup && echo prova > prova.txt && awsl s3 cp prova.txt s3://lab-backup/vecchio.txt</code></pre>
+  <p>Assumi il role e usa le sue credenziali temporanee per tre chiamate:</p>
+<pre class="labcmd"><code>read AK SK ST <<< "$(awsl sts assume-role --role-arn arn:aws:iam::000000000000:role/lab-backup --role-session-name mario --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' --output text)"</code></pre>
+<pre class="labcmd"><code>AWS_ACCESS_KEY_ID=$AK AWS_SECRET_ACCESS_KEY=$SK AWS_SESSION_TOKEN=$ST awsl sts get-caller-identity --query Arn</code></pre>
+<pre class="labcmd"><code>AWS_ACCESS_KEY_ID=$AK AWS_SECRET_ACCESS_KEY=$SK AWS_SESSION_TOKEN=$ST awsl s3 cp prova.txt s3://lab-backup/nuovo.txt</code></pre>
+<pre class="labcmd" data-fail="1"><code>AWS_ACCESS_KEY_ID=$AK AWS_SECRET_ACCESS_KEY=$SK AWS_SESSION_TOKEN=$ST awsl s3 rm s3://lab-backup/vecchio.txt</code></pre>
+<pre class="labcmd" data-fail="1"><code>AWS_ACCESS_KEY_ID=$AK AWS_SECRET_ACCESS_KEY=$SK AWS_SESSION_TOKEN=$ST awsl ec2 describe-vpcs</code></pre>
+  <p>Risultati attesi: la sessione è <code>assumed-role/lab-backup/mario</code>; il PutObject riesce; il DeleteObject fallisce con <code>AccessDenied … because no identity-based policy allows the s3:DeleteObject action</code> (deny implicito); la chiamata EC2 fallisce con <code>UnauthorizedOperation</code>.</p>
+  <p>Ora il Deny esplicito. Dai al role tutto S3 sul bucket, poi aggiungi un Deny sulla cancellazione:</p>
+<pre class="labcmd"><code>awsl iam put-role-policy --role-name lab-backup --policy-name s3-tutto --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"s3:*","Resource":["arn:aws:s3:::lab-backup","arn:aws:s3:::lab-backup/*"]}]}'</code></pre>
+<pre class="labcmd"><code>AWS_ACCESS_KEY_ID=$AK AWS_SECRET_ACCESS_KEY=$SK AWS_SESSION_TOKEN=$ST awsl s3 rm s3://lab-backup/nuovo.txt</code></pre>
+<pre class="labcmd"><code>awsl iam put-role-policy --role-name lab-backup --policy-name nega-delete --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Deny","Action":"s3:DeleteObject","Resource":"*"}]}'</code></pre>
+<pre class="labcmd" data-fail="1"><code>AWS_ACCESS_KEY_ID=$AK AWS_SECRET_ACCESS_KEY=$SK AWS_SESSION_TOKEN=$ST awsl s3 rm s3://lab-backup/vecchio.txt</code></pre>
+  <p>Il primo <code>rm</code> riesce, il secondo fallisce con <code>… with an explicit deny in an identity-based policy</code>: anche se <code>s3:*</code> lo permetterebbe, il Deny vince. Puoi anche chiedere a IAM una simulazione, senza eseguire nulla:</p>
+<pre class="labcmd"><code>awsl iam simulate-principal-policy --policy-source-arn arn:aws:iam::000000000000:role/lab-backup --action-names s3:PutObject s3:DeleteObject ec2:DescribeVpcs --resource-arns arn:aws:s3:::lab-backup/x --query 'EvaluationResults[].[EvalActionName,EvalDecision]' --output table</code></pre>
+  <div class="callout"><strong>Limite.</strong> MiniStack valuta policy identity-based, Allow e Deny, ma non le permission boundary e le SCP: un role con boundary <code>AmazonS3ReadOnlyAccess</code> continua a poter scrivere. Per quei casi usa il valutatore del modulo 11.</div>
+
+  <h3 id="lab-e6">Esercizio 6 · Un cluster EKS vero e l'accesso con IAM <span class="tag nt">moduli 12 e 14</span></h3>
+  <p>Il cluster role, poi il cluster nelle subnet private. MiniStack avvia un container k3s: serve Docker attivo.</p>
+<pre class="labcmd"><code>cat > trust-eks.json <<'EOF'
+{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"eks.amazonaws.com"},"Action":"sts:AssumeRole"}]}
+EOF</code></pre>
+<pre class="labcmd"><code>awsl iam create-role --role-name lab-cluster-role --assume-role-policy-document file://trust-eks.json --query Role.Arn --output text</code></pre>
+<pre class="labcmd"><code>SUBNETS=$(awsl ec2 describe-subnets --filters Name=vpc-id,Values=$VPC Name=tag:Name,Values=priv-1a,priv-1b,priv-1c --query 'Subnets[].SubnetId' --output text | tr '\t' ','); echo $SUBNETS</code></pre>
+<pre class="labcmd"><code>awsl eks create-cluster --name lab-eks --kubernetes-version 1.31 --role-arn arn:aws:iam::000000000000:role/lab-cluster-role --resources-vpc-config subnetIds=$SUBNETS --access-config authenticationMode=API --query cluster.status</code></pre>
+<pre class="labcmd"><code>awsl eks wait cluster-active --name lab-eks && awsl eks describe-cluster --name lab-eks --query 'cluster.{stato:status,versione:version,endpoint:endpoint,oidc:identity.oidc.issuer,sg:resourcesVpcConfig.clusterSecurityGroupId}'</code></pre>
+<pre class="labcmd"><code>awsl eks update-kubeconfig --name lab-eks --alias lab-eks</code></pre>
+  <p>Apri <code>~/.kube/ministack</code>: l'utente non ha un token, ma un <code>exec</code> che chiama <code>aws eks get-token</code>, come sui cluster veri. Ora crea un role da amministratore con la sua access entry:</p>
+<pre class="labcmd"><code>awsl iam create-role --role-name ops-admin --assume-role-policy-document file://trust-account.json --query Role.Arn --output text</code></pre>
+<pre class="labcmd"><code>awsl eks create-access-entry --cluster-name lab-eks --principal-arn arn:aws:iam::000000000000:role/ops-admin --query accessEntry.type</code></pre>
+<pre class="labcmd"><code>awsl eks associate-access-policy --cluster-name lab-eks --principal-arn arn:aws:iam::000000000000:role/ops-admin --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy --access-scope type=cluster --query associatedAccessPolicy.policyArn</code></pre>
+<pre class="labcmd"><code>read AK SK ST <<< "$(awsl sts assume-role --role-arn arn:aws:iam::000000000000:role/ops-admin --role-session-name giorgio --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' --output text)"</code></pre>
+<pre class="labcmd" data-retry="1"><code>AWS_ACCESS_KEY_ID=$AK AWS_SECRET_ACCESS_KEY=$SK AWS_SESSION_TOKEN=$ST kubectl auth whoami</code></pre>
+<pre class="labcmd"><code>AWS_ACCESS_KEY_ID=$AK AWS_SECRET_ACCESS_KEY=$SK AWS_SESSION_TOKEN=$ST kubectl get nodes -L topology.kubernetes.io/zone</code></pre>
+  <p>Lo username Kubernetes è l'ARN della sessione (<code>assumed-role/ops-admin/giorgio</code>): l'API server ha verificato il token IAM e applicato l'access entry. Ora il caso del supporto di secondo livello, con accesso in sola lettura al solo namespace <code>default</code>:</p>
+<pre class="labcmd"><code>awsl iam create-role --role-name support-l2 --assume-role-policy-document file://trust-account.json --query Role.Arn --output text</code></pre>
+<pre class="labcmd"><code>read AK2 SK2 ST2 <<< "$(awsl sts assume-role --role-arn arn:aws:iam::000000000000:role/support-l2 --role-session-name luca --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' --output text)"</code></pre>
+<pre class="labcmd" data-fail="1"><code>AWS_ACCESS_KEY_ID=$AK2 AWS_SECRET_ACCESS_KEY=$SK2 AWS_SESSION_TOKEN=$ST2 kubectl get pods -n default</code></pre>
+<pre class="labcmd"><code>awsl eks create-access-entry --cluster-name lab-eks --principal-arn arn:aws:iam::000000000000:role/support-l2 --query accessEntry.type</code></pre>
+<pre class="labcmd"><code>awsl eks associate-access-policy --cluster-name lab-eks --principal-arn arn:aws:iam::000000000000:role/support-l2 --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy --access-scope type=namespace,namespaces=default --query associatedAccessPolicy.accessScope</code></pre>
+<pre class="labcmd" data-retry="1"><code>AWS_ACCESS_KEY_ID=$AK2 AWS_SECRET_ACCESS_KEY=$SK2 AWS_SESSION_TOKEN=$ST2 kubectl get pods -n default</code></pre>
+<pre class="labcmd" data-fail="1"><code>AWS_ACCESS_KEY_ID=$AK2 AWS_SECRET_ACCESS_KEY=$SK2 AWS_SESSION_TOKEN=$ST2 kubectl get pods -n kube-system</code></pre>
+<pre class="labcmd" data-fail="1"><code>AWS_ACCESS_KEY_ID=$AK2 AWS_SECRET_ACCESS_KEY=$SK2 AWS_SESSION_TOKEN=$ST2 kubectl create configmap prova -n default</code></pre>
+  <p>Risultati attesi, gli stessi di un cluster EKS vero: senza entry <code>You must be logged in to the server (Unauthorized)</code>, cioè 401; con l'entry la lettura in <code>default</code> funziona; <code>kube-system</code> e la creazione danno <code>Forbidden</code>, cioè 403. L'access entry può impiegare qualche secondo a diventare effettiva: se il primo tentativo fallisce, ripeti.</p>
+  <div class="callout"><strong>Credenziali di root.</strong> Con <code>AUTH=true</code> le credenziali fittizie <code>test/test</code> chiamano le API AWS da root, ma <code>kubectl</code> con quelle credenziali riceve <code>Unauthorized</code>. Per il cluster usa sempre un role con la sua access entry, come si fa in produzione.</div>
+
+  <h3 id="lab-e7">Esercizio 7 · Node group e add-on <span class="tag nt">modulo 12</span></h3>
+<pre class="labcmd"><code>cat > trust-ec2.json <<'EOF'
+{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"ec2.amazonaws.com"},"Action":"sts:AssumeRole"}]}
+EOF</code></pre>
+<pre class="labcmd"><code>awsl iam create-role --role-name lab-node-role --assume-role-policy-document file://trust-ec2.json --query Role.Arn --output text</code></pre>
+<pre class="labcmd"><code>awsl iam attach-role-policy --role-name lab-node-role --policy-arn arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy</code></pre>
+<pre class="labcmd"><code>awsl eks create-nodegroup --cluster-name lab-eks --nodegroup-name main --node-role arn:aws:iam::000000000000:role/lab-node-role --subnets $(echo $SUBNETS | tr ',' ' ') --instance-types m6i.xlarge --scaling-config minSize=2,maxSize=4,desiredSize=2 --labels role=main --query nodegroup.status</code></pre>
+<pre class="labcmd"><code>awsl eks describe-nodegroup --cluster-name lab-eks --nodegroup-name main --query 'nodegroup.{stato:status,tipi:instanceTypes,scaling:scalingConfig,asg:resources.autoScalingGroups[0].name}'</code></pre>
+<pre class="labcmd"><code>awsl eks create-addon --cluster-name lab-eks --addon-name eks-pod-identity-agent --query addon.status</code></pre>
+<pre class="labcmd"><code>awsl eks list-addons --cluster-name lab-eks</code></pre>
+  <p><b>Da notare</b>: node group e add-on esistono come risorse API, con stati e campi realistici, ma non cambiano il cluster. k3s resta un solo nodo, senza la label del node group, e gli add-on non installano pod. Su EKS vero il node group crea istanze EC2 che entrano nel cluster (modulo 18), e gli add-on sono DaemonSet e Deployment in <code>kube-system</code>.</p>
+
+  <h3 id="lab-e8">Esercizio 8 · Identità dei pod: Pod Identity e IRSA <span class="tag nt">modulo 15</span></h3>
+  <p>Il role per Velero, con la trust generica di Pod Identity e la policy di backup, e l'association con il ServiceAccount:</p>
+<pre class="labcmd"><code>cat > trust-pods.json <<'EOF'
+{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"pods.eks.amazonaws.com"},"Action":["sts:AssumeRole","sts:TagSession"]}]}
+EOF</code></pre>
+<pre class="labcmd"><code>awsl iam create-role --role-name velero-lab --assume-role-policy-document file://trust-pods.json --query Role.Arn --output text</code></pre>
+<pre class="labcmd"><code>awsl iam put-role-policy --role-name velero-lab --policy-name s3-backup --policy-document file://policy-backup.json</code></pre>
+<pre class="labcmd"><code>awsl eks create-pod-identity-association --cluster-name lab-eks --namespace velero --service-account velero --role-arn arn:aws:iam::000000000000:role/velero-lab --query 'association.{id:associationId,ns:namespace,sa:serviceAccount}'</code></pre>
+<pre class="labcmd"><code>awsl eks list-pod-identity-associations --cluster-name lab-eks --output table</code></pre>
+  <p>Ora il meccanismo di IRSA, fatto a mano. Registra l'OIDC issuer del cluster in IAM, crea il ServiceAccount, fatti dare un suo token con audience <code>sts.amazonaws.com</code> e presentalo a STS, esattamente come fa l'SDK dentro un pod.</p>
+<pre class="labcmd"><code>ISSUER=$(awsl eks describe-cluster --name lab-eks --query cluster.identity.oidc.issuer --output text); echo $ISSUER</code></pre>
+<pre class="labcmd"><code>awsl iam create-open-id-connect-provider --url $ISSUER --client-id-list sts.amazonaws.com --thumbprint-list 0000000000000000000000000000000000000000 --query OpenIDConnectProviderArn --output text</code></pre>
+<pre class="labcmd"><code>AWS_ACCESS_KEY_ID=$AK AWS_SECRET_ACCESS_KEY=$SK AWS_SESSION_TOKEN=$ST kubectl create namespace velero</code></pre>
+<pre class="labcmd"><code>AWS_ACCESS_KEY_ID=$AK AWS_SECRET_ACCESS_KEY=$SK AWS_SESSION_TOKEN=$ST kubectl -n velero create serviceaccount velero</code></pre>
+<pre class="labcmd"><code>SA_TOKEN=$(AWS_ACCESS_KEY_ID=$AK AWS_SECRET_ACCESS_KEY=$SK AWS_SESSION_TOKEN=$ST kubectl -n velero create token velero --audience sts.amazonaws.com --duration 1h)</code></pre>
+<pre class="labcmd"><code>python3 -c 'import sys,base64,json; p=sys.argv[1].split(".")[1]; print(json.dumps(json.loads(base64.urlsafe_b64decode(p+"="*(-len(p)%4))),indent=1))' $SA_TOKEN</code></pre>
+<pre class="labcmd"><code>read AK3 SK3 ST3 <<< "$(awsl sts assume-role-with-web-identity --role-arn arn:aws:iam::000000000000:role/velero-lab --role-session-name velero-pod --web-identity-token $SA_TOKEN --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' --output text)"</code></pre>
+<pre class="labcmd"><code>AWS_ACCESS_KEY_ID=$AK3 AWS_SECRET_ACCESS_KEY=$SK3 AWS_SESSION_TOKEN=$ST3 awsl s3 cp prova.txt s3://lab-backup/dal-pod.txt</code></pre>
+<pre class="labcmd" data-fail="1"><code>AWS_ACCESS_KEY_ID=$AK3 AWS_SECRET_ACCESS_KEY=$SK3 AWS_SESSION_TOKEN=$ST3 awsl s3 rm s3://lab-backup/dal-pod.txt</code></pre>
+  <p>Nel token decodificato riconosci il claim <code>"sub": "system:serviceaccount:velero:velero"</code> e <code>"aud": ["sts.amazonaws.com"]</code>: sono i valori che la trust policy IRSA confronta. Con le credenziali ottenute la scrittura riesce e la cancellazione no, perché la policy del role non la prevede.</p>
+  <div class="callout"><strong>Limite.</strong> MiniStack non verifica la firma del token né le condizioni della trust su <code>AssumeRoleWithWebIdentity</code>, e non inietta le variabili nei pod (né per IRSA né per Pod Identity). Gli errori di trust del modulo 19 qui non si riproducono: sono l'API e il flusso delle credenziali a essere fedeli.</div>
+
+  <h3 id="lab-e9">Esercizio 9 · Un ALB con target IP <span class="tag nt">modulo 17</span></h3>
+<pre class="labcmd"><code>ALB=$(awsl elbv2 create-load-balancer --name shop-alb --type application --scheme internal --subnets $(echo $SUBNETS | tr ',' ' ') --query 'LoadBalancers[0].LoadBalancerArn' --output text); echo $ALB</code></pre>
+<pre class="labcmd"><code>TG=$(awsl elbv2 create-target-group --name shop-tg --protocol HTTP --port 8080 --vpc-id $VPC --target-type ip --health-check-path /healthz --query 'TargetGroups[0].TargetGroupArn' --output text); echo $TG</code></pre>
+<pre class="labcmd"><code>awsl elbv2 register-targets --target-group-arn $TG --targets Id=10.0.70.15,Port=8080 Id=10.0.100.22,Port=8080</code></pre>
+<pre class="labcmd"><code>awsl elbv2 create-listener --load-balancer-arn $ALB --protocol HTTP --port 80 --default-actions Type=forward,TargetGroupArn=$TG --query 'Listeners[0].{porta:Port,protocollo:Protocol}'</code></pre>
+<pre class="labcmd"><code>awsl elbv2 describe-target-health --target-group-arn $TG --query 'TargetHealthDescriptions[].{ip:Target.Id,stato:TargetHealth.State}' --output table</code></pre>
+<pre class="labcmd"><code>awsl elbv2 describe-load-balancers --names shop-alb --query 'LoadBalancers[0].{dns:DNSName,schema:Scheme,stato:State.Code}'</code></pre>
+  <p>Hai creato a mano quello che l'AWS Load Balancer Controller crea da un Ingress con <code>target-type: ip</code>: ALB, target group con gli IP dei pod, listener. <b>Da notare</b>: i target risultano sempre <code>healthy</code>, perché nessuno esegue davvero l'health check.</p>
+
+  <h3>Pulizia</h3>
+<pre class="labcmd"><code>awsl eks delete-cluster --name lab-eks --query cluster.status</code></pre>
+<pre><code>docker ps --filter name=ministack-eks</code></pre>
+  <p>Lo stato di MiniStack è in memoria: fermando il processo (o il container) si riparte da zero. Per conservarlo tra un riavvio e l'altro c'è la variabile <code>PERSIST_STATE=1</code>.</p>
+
+  <h3>Cosa è fedele e cosa no</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Area</th><th>Fedele ad AWS</th><th>Diverso da AWS</th></tr></thead>
+    <tbody>
+      <tr><td>CLI e formati</td><td>Comandi, parametri, ID e ARN, output JSON</td><td>Account fisso <code>000000000000</code></td></tr>
+      <tr><td>VPC e subnet</td><td>Creazione, tag, route table, IGW, NAT, endpoint, query e filtri</td><td>Subnet sovrapposte accettate; IP liberi sempre 251; nessun traffico reale</td></tr>
+      <tr><td>Security Group</td><td>Regole, riferimenti tra SG, default in uscita</td><td>Nessun filtro sul traffico</td></tr>
+      <tr><td>EC2 ed EBS</td><td>Volumi, snapshot, volume da snapshot in altra AZ, modifica</td><td>Attach tra AZ diverse accettato; opzioni IMDS non salvate</td></tr>
+      <tr><td>IAM (<code>AUTH=true</code>)</td><td>Policy identity-based valutate: Allow, Deny esplicito, deny implicito, messaggi d'errore; assume-role; simulazione</td><td>Permission boundary e SCP non applicate</td></tr>
+      <tr><td>EKS · cluster</td><td>Kubernetes vero (k3s), kubeconfig con <code>aws eks get-token</code>, autenticazione IAM, access entry e access policy con scope</td><td>k3s a nodo singolo; versione di Kubernetes fissata dall'immagine k3s</td></tr>
+      <tr><td>EKS · node group e add-on</td><td>API, stati e campi</td><td>Non creano nodi né pod; <code>describe-addon-versions</code> non supportato</td></tr>
+      <tr><td>Pod Identity e IRSA</td><td>Association, OIDC issuer con JWKS, AssumeRoleWithWebIdentity, policy applicate alle credenziali ottenute</td><td>Token e trust non verificati; nessuna iniezione di variabili nei pod</td></tr>
+      <tr><td>ELBv2</td><td>ALB, target group IP, listener, DNS name</td><td>Health check sempre <code>healthy</code></td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout ocp"><strong>Come usarlo bene.</strong> MiniStack è perfetto per imparare i comandi, provare script e Terraform, e vedere IAM e access entry dire di no. Per capire se una regola di rete o un vincolo di AZ funzionano servono i laboratori interattivi di questo corso, e alla fine un account AWS di prova con i suoi errori veri.</div>
+
+  <div class="check" data-quiz="lab"></div>
+  <div class="donebar"><button type="button" class="donebtn" data-done="lab" aria-pressed="false">Segna come completato</button></div>
+</section>
+
 <!-- ================= ESAME ================= -->
 <div class="level" id="lx">
   <div class="eyebrow">Verifica</div>
@@ -1909,7 +2146,7 @@ kubectl run t --rm -it --image=public.ecr.aws/docker/library/busybox:stable -- n
 </section>
 
 <footer>
-  <p>Corso preparato per il team Infra K8s · ottobre 2026. Limiti, quote, versioni e nomi delle policy AWS cambiano nel tempo: verificali sulla documentazione ufficiale prima di usarli per un dimensionamento o in produzione. I progressi del corso sono salvati solo in questo browser.</p>
+  <p>Corso preparato per il team Infra K8s · ottobre 2026. Laboratorio verificato con MiniStack 1.5.26. Limiti, quote, versioni e nomi delle policy AWS cambiano nel tempo: verificali sulla documentazione ufficiale prima di usarli per un dimensionamento o in produzione. I progressi del corso sono salvati solo in questo browser.</p>
   <p><button type="button" class="btn" id="resetAll">Azzera progressi e punteggi</button> <span id="resetMsg" class="hint"></span></p>
 </footer>
 </main>
@@ -1923,8 +2160,8 @@ var fmt=function(n){return Number(n).toLocaleString('it-IT')};
 var esc=function(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
 
 /* ---------- storage (per-viewer convenience) ---------- */
-var KEY='eks-course-v1',ST={done:{},quiz:{},exam:null};
-try{var raw=localStorage.getItem(KEY);if(raw){var p=JSON.parse(raw);if(p&&typeof p==='object'){ST.done=p.done||{};ST.quiz=p.quiz||{};ST.exam=p.exam||null}}}catch(e){}
+var KEY='eks-course-v1',ST={done:{},quiz:{},exam:null,lab:{}};
+try{var raw=localStorage.getItem(KEY);if(raw){var p=JSON.parse(raw);if(p&&typeof p==='object'){ST.done=p.done||{};ST.quiz=p.quiz||{};ST.exam=p.exam||null;ST.lab=p.lab||{}}}}catch(e){}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(ST))}catch(e){}}
 
 /* ---------- copy buttons ---------- */
@@ -2237,6 +2474,13 @@ function triage(){var t=TR[$('trSel').value];var h='<p style="margin-bottom:8px"
   h+='</ol><div class="verdict allow"><b>RIMEDIO TIPICO</b><span>'+esc(t.f)+'</span></div>';$('trOut').innerHTML=h;$('trOut').querySelectorAll('pre').forEach(addCopy)}
 $('trSel').addEventListener('change',triage);triage();
 
+/* ---------- M20 lab checklist ---------- */
+var LABS=[['setup','Preparazione: MiniStack avviato con AUTH=true e terminale configurato'],['lab-e1','1 · Account, region e tag'],['lab-e2','2 · Rete del cluster: subnet, IGW, NAT, route table, endpoint'],['lab-e3','3 · Security Group che citano altri SG'],['lab-e4','4 · Volumi EBS, snapshot e AZ'],['lab-e5','5 · IAM: deny implicito e Deny esplicito'],['lab-e6','6 · Cluster EKS e access entry (401 e 403)'],['lab-e7','7 · Node group e add-on'],['lab-e8','8 · Pod Identity e IRSA'],['lab-e9','9 · ALB con target IP']];
+function renderLab(){var box=$('labList');if(!box)return;var done=LABS.filter(function(l){return ST.lab[l[0]]}).length;
+  box.innerHTML='<div class="prog" style="margin:0 0 10px"><i style="width:'+(done/LABS.length*100)+'%"></i></div>'+LABS.map(function(l){return'<label class="chk" for="lb-'+l[0]+'"><input type="checkbox" id="lb-'+l[0]+'" data-l="'+l[0]+'"'+(ST.lab[l[0]]?' checked':'')+'> '+(l[0]==='setup'?esc(l[1]):'<a href="#'+l[0]+'">'+esc(l[1])+'</a>')+'</label>'}).join('')+'<p class="hint" style="margin:8px 0 0">'+done+' / '+LABS.length+' completati</p>';
+  box.querySelectorAll('input[data-l]').forEach(function(c){c.addEventListener('change',function(){if(c.checked)ST.lab[c.dataset.l]=true;else delete ST.lab[c.dataset.l];save();renderLab()})})}
+renderLab();
+
 /* ---------- quiz bank ---------- */
 var QB={
  cloud:[
@@ -2323,6 +2567,11 @@ var QB={
   ['Che differenza c\'è tra "timeout" e "connection refused"?',['Timeout: pacchetti scartati (SG, NACL, route); refused: arriva, ma nessuno ascolta','Sono equivalenti','Refused indica un Security Group','Timeout indica un errore dell\'applicazione'],'Il SG scarta in silenzio, non rifiuta.'],
   ['"exec format error" all\'avvio di un container su un nodo Graviton. Causa?',['Immagine disponibile solo per amd64','Permessi IAM mancanti','DNS non funzionante','Security Group chiuso'],'Le immagini devono essere multi-architettura per girare su ARM64.'],
   ['ImagePullBackOff da ECR in un cluster senza NAT. Primo sospetto?',['Endpoint VPC mancanti (ecr.api, ecr.dkr, S3)','RBAC dell\'utente','StorageClass','Access entry dell\'utente'],'Senza NAT i servizi AWS si raggiungono solo con gli endpoint.']],
+ lab:[
+  ['Con MiniStack avviato con AUTH=true, un role senza s3:DeleteObject prova a cancellare un oggetto. Cosa succede?',['AccessDenied: deny implicito, come su AWS','L\'oggetto viene cancellato: l\'emulatore non controlla','Errore di connessione','Unauthorized da kubectl'],'Con AUTH=true MiniStack valuta le policy identity-based: Allow, Deny esplicito e deny implicito.'],
+  ['Colleghi a un\'istanza in 1a un volume EBS di 1b e MiniStack risponde "attached". Su AWS vero?',['Errore InvalidVolume.ZoneMismatch','Funziona allo stesso modo','Il volume viene copiato in 1a','L\'istanza viene spostata in 1b'],'È una delle differenze dell\'emulatore: su AWS un volume si collega solo a istanze della sua AZ.'],
+  ['Perché nel laboratorio si imposta KUBECONFIG=$HOME/.kube/ministack?',['Per non modificare il kubeconfig dei cluster reali','Perché MiniStack non legge ~/.kube/config','Per abilitare IAM','Per usare k3s invece di EKS'],'update-kubeconfig aggiunge contesti: con un file separato i cluster dei clienti restano intatti.'],
+  ['Cosa avvia MiniStack quando esegui eks create-cluster con Docker disponibile?',['Un container k3s con un API server Kubernetes vero','Solo una risposta JSON, senza cluster','Un cluster EKS su un account AWS','Una VM per ogni node group'],'Per questo kubectl, l\'autenticazione IAM e le access entry si possono provare davvero; node group e add-on restano invece solo metadati.']],
  misto:[
   ['Quale servizio emette le credenziali temporanee quando si assume un role?',['STS','KMS','IAM Identity Center','EC2'],'Security Token Service: AssumeRole e varianti.'],
   ['Un ALB internet-facing deve stare in:',['Subnet pubbliche taggate kubernetes.io/role/elb','Subnet private','Subnet isolate','Qualunque subnet'],'Deve essere raggiungibile da internet tramite l\'Internet Gateway.'],
@@ -2330,7 +2579,7 @@ var QB={
   ['A cosa serve lo Zone ID (es. eus1-az1)?',['A identificare la stessa AZ fisica in account diversi','A indicare una region','A identificare un data center on-prem','A nominare una subnet'],'Il nome eu-south-1a può corrispondere ad AZ fisiche diverse in account diversi.'],
   ['Un pod senza IRSA né Pod Identity, su un nodo con IMDSv2 e hop limit 1, chiama S3. Cosa succede?',['Non trova credenziali e la chiamata fallisce','Usa il node role','Usa il cluster role','Usa le credenziali di chi ha fatto il deploy'],'È il comportamento desiderato: ogni pod che chiama AWS deve avere la sua identità.']]
 };
-var AREA={cloud:'Cloud',modello:'Cloud',aws:'AWS',arn:'AWS',ip:'Rete',routing:'Rete',vpc:'Rete',sg:'Rete',ec2:'EC2 · EBS',ebs:'EC2 · EBS',iam:'IAM',eks:'EKS',cni:'EKS',accessi:'Identità EKS',irsa:'Identità EKS',storage:'EKS',esposizione:'EKS',insieme:'EKS',triage:'EKS',misto:'Misto'};
+var AREA={cloud:'Cloud',modello:'Cloud',aws:'AWS',arn:'AWS',ip:'Rete',routing:'Rete',vpc:'Rete',sg:'Rete',ec2:'EC2 · EBS',ebs:'EC2 · EBS',iam:'IAM',eks:'EKS',cni:'EKS',accessi:'Identità EKS',irsa:'Identità EKS',storage:'EKS',esposizione:'EKS',insieme:'EKS',triage:'EKS',lab:'Lab',misto:'Misto'};
 function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
 function renderQ(q,num,area,onAnswer){var d=document.createElement('div');d.className='q';var opts=shuffle(q[1].map(function(t,i){return{t:t,ok:i===0}}));
   d.innerHTML=(area?'<div class="area">'+esc(area)+'</div>':'')+'<p class="qq">'+num+'. '+esc(q[0])+'</p><div class="opts"></div><div class="fb" aria-live="polite"></div>';
@@ -2363,13 +2612,13 @@ function examRun(){var pool=[];Object.keys(QB).forEach(function(m){QB[m].forEach
 examIntro();
 
 /* ---------- glossary ---------- */
-var GL=[['ACM','AWS Certificate Manager: emette e conserva certificati TLS usati da ALB e NLB.'],['Access entry','Collega un principal IAM a un cluster EKS, con access policy o gruppi Kubernetes.'],['Add-on EKS','Componente del cluster (CNI, CoreDNS, kube-proxy, CSI…) distribuito e versionato da AWS.'],['ALB','Application Load Balancer: livello 7, HTTP/HTTPS, creato dagli Ingress.'],['AMI','Amazon Machine Image: l\'immagine da cui parte un\'istanza EC2.'],['ARN','Amazon Resource Name: l\'identificativo unico di una risorsa AWS.'],['ASG','Auto Scaling Group: mantiene un numero di istanze tra un minimo e un massimo.'],['AZ','Availability Zone: uno o più data center isolati dentro una region.'],['CIDR','Notazione indirizzo/prefisso per un blocco di indirizzi IP, es. 10.0.0.0/16.'],['CNI','Container Network Interface: il plugin che dà la rete ai pod. Su EKS, Amazon VPC CNI.'],['Cluster security group','SG creato da EKS che permette il traffico tra control plane e nodi.'],['CSI','Container Storage Interface: lo standard dei driver di storage in Kubernetes.'],['EBS','Elastic Block Store: dischi a blocchi per EC2, legati a una AZ.'],['EC2','Elastic Compute Cloud: il servizio delle macchine virtuali.'],['ECR','Elastic Container Registry: il registry di immagini di AWS.'],['EFS','Elastic File System: NFS gestito, multi-AZ, per volumi ReadWriteMany.'],['Elastic IP','Indirizzo IPv4 pubblico statico assegnato al tuo account.'],['ENI','Elastic Network Interface: scheda di rete virtuale con IP e Security Group.'],['IAM','Identity and Access Management: identità e permessi per le API AWS.'],['IGW','Internet Gateway: collega una VPC a internet.'],['IMDS','Instance Metadata Service: servizio a 169.254.169.254 con metadati e credenziali dell\'istanza.'],['Instance profile','Associa un role IAM a un\'istanza EC2.'],['IRSA','IAM Roles for Service Accounts: legame SA → role tramite l\'OIDC issuer del cluster.'],['Karpenter','Autoscaler che crea nodi su misura per i pod in attesa.'],['KMS','Key Management Service: chiavi di cifratura gestite.'],['Managed node group','Gruppo di worker node EC2 il cui ASG e i cui upgrade sono gestiti da EKS.'],['NACL','Network ACL: firewall stateless a livello di subnet.'],['NAT Gateway','Fa uscire su internet le subnet private; zonale, con un Elastic IP.'],['NLB','Network Load Balancer: livello 4, TCP/UDP/TLS.'],['OIDC issuer','Endpoint del cluster che firma i token dei ServiceAccount; base di IRSA.'],['Permission boundary','Tetto massimo ai permessi di un singolo user o role.'],['Pod Identity','Meccanismo EKS che lega un ServiceAccount a un role tramite association e agent.'],['Prefix delegation','Modalità del VPC CNI che assegna blocchi /28 invece di IP singoli.'],['Principal','Chi fa una chiamata ad AWS: user, role, servizio, utente federato.'],['Region','Area geografica AWS con più AZ, es. eu-south-1 (Milano).'],['Role','Identità IAM senza credenziali proprie, assunta per ottenere credenziali temporanee.'],['Route table','Regole di instradamento associate alle subnet di una VPC.'],['SCP','Service Control Policy: limite massimo ai permessi di un account dell\'organizzazione.'],['Security Group','Firewall stateful con sole regole Allow, applicato alle ENI.'],['STS','Security Token Service: emette credenziali temporanee.'],['Subnet','Porzione del CIDR della VPC in una sola AZ.'],['Target group','Insieme di destinazioni (IP dei pod o istanze) di un load balancer.'],['Transit Gateway','Router regionale che collega più VPC e reti on-prem.'],['Trust policy','La parte di un role che dice chi può assumerlo.'],['VPC','Virtual Private Cloud: rete privata isolata in una region.'],['VPC endpoint','Accesso privato a un servizio AWS dalla VPC, senza passare da internet.']];
+var GL=[['ACM','AWS Certificate Manager: emette e conserva certificati TLS usati da ALB e NLB.'],['Access entry','Collega un principal IAM a un cluster EKS, con access policy o gruppi Kubernetes.'],['Add-on EKS','Componente del cluster (CNI, CoreDNS, kube-proxy, CSI…) distribuito e versionato da AWS.'],['ALB','Application Load Balancer: livello 7, HTTP/HTTPS, creato dagli Ingress.'],['AMI','Amazon Machine Image: l\'immagine da cui parte un\'istanza EC2.'],['ARN','Amazon Resource Name: l\'identificativo unico di una risorsa AWS.'],['ASG','Auto Scaling Group: mantiene un numero di istanze tra un minimo e un massimo.'],['AZ','Availability Zone: uno o più data center isolati dentro una region.'],['CIDR','Notazione indirizzo/prefisso per un blocco di indirizzi IP, es. 10.0.0.0/16.'],['CNI','Container Network Interface: il plugin che dà la rete ai pod. Su EKS, Amazon VPC CNI.'],['Cluster security group','SG creato da EKS che permette il traffico tra control plane e nodi.'],['CSI','Container Storage Interface: lo standard dei driver di storage in Kubernetes.'],['EBS','Elastic Block Store: dischi a blocchi per EC2, legati a una AZ.'],['EC2','Elastic Compute Cloud: il servizio delle macchine virtuali.'],['ECR','Elastic Container Registry: il registry di immagini di AWS.'],['EFS','Elastic File System: NFS gestito, multi-AZ, per volumi ReadWriteMany.'],['Elastic IP','Indirizzo IPv4 pubblico statico assegnato al tuo account.'],['ENI','Elastic Network Interface: scheda di rete virtuale con IP e Security Group.'],['IAM','Identity and Access Management: identità e permessi per le API AWS.'],['IGW','Internet Gateway: collega una VPC a internet.'],['IMDS','Instance Metadata Service: servizio a 169.254.169.254 con metadati e credenziali dell\'istanza.'],['Instance profile','Associa un role IAM a un\'istanza EC2.'],['IRSA','IAM Roles for Service Accounts: legame SA → role tramite l\'OIDC issuer del cluster.'],['Karpenter','Autoscaler che crea nodi su misura per i pod in attesa.'],['KMS','Key Management Service: chiavi di cifratura gestite.'],['MiniStack','Emulatore locale open source di molti servizi AWS, usato nel laboratorio del modulo 20.'],['k3s','Distribuzione Kubernetes leggera; MiniStack la usa per dare un cluster vero all\'API di EKS.'],['Managed node group','Gruppo di worker node EC2 il cui ASG e i cui upgrade sono gestiti da EKS.'],['NACL','Network ACL: firewall stateless a livello di subnet.'],['NAT Gateway','Fa uscire su internet le subnet private; zonale, con un Elastic IP.'],['NLB','Network Load Balancer: livello 4, TCP/UDP/TLS.'],['OIDC issuer','Endpoint del cluster che firma i token dei ServiceAccount; base di IRSA.'],['Permission boundary','Tetto massimo ai permessi di un singolo user o role.'],['Pod Identity','Meccanismo EKS che lega un ServiceAccount a un role tramite association e agent.'],['Prefix delegation','Modalità del VPC CNI che assegna blocchi /28 invece di IP singoli.'],['Principal','Chi fa una chiamata ad AWS: user, role, servizio, utente federato.'],['Region','Area geografica AWS con più AZ, es. eu-south-1 (Milano).'],['Role','Identità IAM senza credenziali proprie, assunta per ottenere credenziali temporanee.'],['Route table','Regole di instradamento associate alle subnet di una VPC.'],['SCP','Service Control Policy: limite massimo ai permessi di un account dell\'organizzazione.'],['Security Group','Firewall stateful con sole regole Allow, applicato alle ENI.'],['STS','Security Token Service: emette credenziali temporanee.'],['Subnet','Porzione del CIDR della VPC in una sola AZ.'],['Target group','Insieme di destinazioni (IP dei pod o istanze) di un load balancer.'],['Transit Gateway','Router regionale che collega più VPC e reti on-prem.'],['Trust policy','La parte di un role che dice chi può assumerlo.'],['VPC','Virtual Private Cloud: rete privata isolata in una region.'],['VPC endpoint','Accesso privato a un servizio AWS dalla VPC, senza passare da internet.']];
 function gl(){var q=$('glIn').value.trim().toLowerCase(),d=$('gl');var rows=GL.filter(function(g){return !q||g[0].toLowerCase().indexOf(q)>=0||g[1].toLowerCase().indexOf(q)>=0});
   d.innerHTML=rows.length?rows.map(function(g){return'<div><dt>'+esc(g[0])+'</dt><dd>'+esc(g[1])+'</dd></div>'}).join(''):'<div><dt>–</dt><dd>Nessun termine trovato.</dd></div>'}
 $('glIn').addEventListener('input',gl);gl();
 
 /* ---------- reset ---------- */
 var armed=false;$('resetAll').addEventListener('click',function(){if(!armed){armed=true;$('resetAll').textContent='Conferma: azzera tutto';$('resetMsg').textContent='Premi di nuovo per confermare.';setTimeout(function(){armed=false;$('resetAll').textContent='Azzera progressi e punteggi';$('resetMsg').textContent=''},4000);return}
-  ST={done:{},quiz:{},exam:null};save();renderProgress();examIntro();armed=false;$('resetAll').textContent='Azzera progressi e punteggi';$('resetMsg').textContent='Progressi azzerati.'});
+  ST={done:{},quiz:{},exam:null,lab:{}};save();renderProgress();examIntro();renderLab();armed=false;$('resetAll').textContent='Azzera progressi e punteggi';$('resetMsg').textContent='Progressi azzerati.'});
 })();
 </script>
